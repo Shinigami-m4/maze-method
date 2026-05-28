@@ -74,6 +74,7 @@ export const databaseSchema = [
   `CREATE TABLE IF NOT EXISTS workout_logs (
     id TEXT PRIMARY KEY NOT NULL,
     routine_id TEXT,
+    routine_name TEXT,
     started_at TEXT NOT NULL,
     ended_at TEXT,
     notes TEXT,
@@ -139,6 +140,8 @@ export const databaseSchema = [
     activity_type TEXT NOT NULL,
     duration_minutes INTEGER NOT NULL,
     distance REAL,
+    pace TEXT,
+    speed REAL,
     calories_burned INTEGER,
     notes TEXT
   );`,
