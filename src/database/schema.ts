@@ -1,0 +1,141 @@
+export const databaseSchema = [
+  "PRAGMA foreign_keys = ON;",
+  `CREATE TABLE IF NOT EXISTS user_profiles (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    age INTEGER,
+    gender TEXT,
+    height REAL,
+    weight REAL,
+    goal_weight REAL,
+    units TEXT NOT NULL,
+    fitness_goal TEXT NOT NULL,
+    experience_level TEXT NOT NULL,
+    training_location TEXT NOT NULL,
+    days_per_week INTEGER NOT NULL,
+    dietary_preference TEXT NOT NULL,
+    activity_level TEXT NOT NULL,
+    maze_coach_tone TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS workout_routines (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    notes TEXT,
+    target_days_per_week INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS exercises (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    muscle_group TEXT,
+    equipment TEXT,
+    custom_notes TEXT,
+    resource_links_json TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS workout_logs (
+    id TEXT PRIMARY KEY NOT NULL,
+    routine_id TEXT,
+    started_at TEXT NOT NULL,
+    ended_at TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (routine_id) REFERENCES workout_routines (id) ON DELETE SET NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS logged_workout_exercises (
+    id TEXT PRIMARY KEY NOT NULL,
+    workout_log_id TEXT NOT NULL,
+    exercise_id TEXT,
+    exercise_name TEXT NOT NULL,
+    sets INTEGER,
+    reps INTEGER,
+    weight REAL,
+    duration_seconds INTEGER,
+    distance REAL,
+    notes TEXT,
+    FOREIGN KEY (workout_log_id) REFERENCES workout_logs (id) ON DELETE CASCADE,
+    FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE SET NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS meals (
+    id TEXT PRIMARY KEY NOT NULL,
+    logged_at TEXT NOT NULL,
+    meal_name TEXT NOT NULL,
+    calories INTEGER,
+    protein_grams REAL,
+    carb_grams REAL,
+    fat_grams REAL,
+    notes TEXT
+  );`,
+  `CREATE TABLE IF NOT EXISTS daily_macro_logs (
+    id TEXT PRIMARY KEY NOT NULL,
+    date TEXT NOT NULL UNIQUE,
+    calories INTEGER,
+    protein_grams REAL,
+    carb_grams REAL,
+    fat_grams REAL,
+    water_ounces REAL
+  );`,
+  `CREATE TABLE IF NOT EXISTS body_weight_entries (
+    id TEXT PRIMARY KEY NOT NULL,
+    date TEXT NOT NULL,
+    weight REAL NOT NULL,
+    units TEXT NOT NULL,
+    notes TEXT
+  );`,
+  `CREATE TABLE IF NOT EXISTS body_measurement_entries (
+    id TEXT PRIMARY KEY NOT NULL,
+    date TEXT NOT NULL,
+    measurement_type TEXT NOT NULL,
+    value REAL NOT NULL,
+    units TEXT NOT NULL,
+    notes TEXT
+  );`,
+  `CREATE TABLE IF NOT EXISTS cardio_sessions (
+    id TEXT PRIMARY KEY NOT NULL,
+    date TEXT NOT NULL,
+    activity_type TEXT NOT NULL,
+    duration_minutes INTEGER NOT NULL,
+    distance REAL,
+    calories_burned INTEGER,
+    notes TEXT
+  );`,
+  `CREATE TABLE IF NOT EXISTS progress_photos (
+    id TEXT PRIMARY KEY NOT NULL,
+    date TEXT NOT NULL,
+    local_uri TEXT NOT NULL,
+    angle TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS calendar_entries (
+    id TEXT PRIMARY KEY NOT NULL,
+    date TEXT NOT NULL,
+    entry_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    related_id TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS daily_notes (
+    id TEXT PRIMARY KEY NOT NULL,
+    date TEXT NOT NULL,
+    note TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );`,
+  `CREATE TABLE IF NOT EXISTS personal_records (
+    id TEXT PRIMARY KEY NOT NULL,
+    exercise_id TEXT,
+    exercise_name TEXT NOT NULL,
+    record_type TEXT NOT NULL,
+    value REAL NOT NULL,
+    units TEXT,
+    achieved_at TEXT NOT NULL,
+    notes TEXT,
+    FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE SET NULL
+  );`
+];

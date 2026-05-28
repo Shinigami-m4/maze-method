@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Maze Method",
+    "slug": "maze-method",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "maze-method",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.mazemethod.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0A"
+      }
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
