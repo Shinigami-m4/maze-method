@@ -82,6 +82,7 @@ export interface MealLog {
   id: string;
   loggedAt: string;
   mealName: string;
+  mealCategory?: "Breakfast" | "Lunch" | "Dinner" | "Snack";
   calories?: number;
   proteinGrams?: number;
   carbGrams?: number;

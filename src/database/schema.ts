@@ -104,6 +104,7 @@ export const databaseSchema = [
     id TEXT PRIMARY KEY NOT NULL,
     logged_at TEXT NOT NULL,
     meal_name TEXT NOT NULL,
+    meal_category TEXT NOT NULL DEFAULT 'Snack',
     calories INTEGER,
     protein_grams REAL,
     carb_grams REAL,

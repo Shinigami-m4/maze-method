@@ -8,6 +8,7 @@ import {
   LoggedWorkoutExerciseEntry
 } from "../types/calendarLogging";
 import { DailyMacroLog, MealLog, ProgressPhoto } from "../types/models";
+import { MealCategory } from "../types/nutrition";
 import { MuscleGroup } from "../types/workouts";
 import { createLocalId } from "../utils/id";
 import { getDatabase } from "./client";
@@ -59,6 +60,7 @@ type MealRow = {
   id: string;
   logged_at: string;
   meal_name: string;
+  meal_category: MealCategory | null;
   calories: number | null;
   protein_grams: number | null;
   carb_grams: number | null;
@@ -478,6 +480,7 @@ function mapMealRow(row: MealRow): MealLog {
     id: row.id,
     loggedAt: row.logged_at,
     mealName: row.meal_name,
+    mealCategory: row.meal_category ?? "Snack",
     calories: row.calories ?? undefined,
     proteinGrams: row.protein_grams ?? undefined,
     carbGrams: row.carb_grams ?? undefined,

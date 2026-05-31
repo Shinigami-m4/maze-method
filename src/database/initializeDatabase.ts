@@ -35,6 +35,8 @@ async function runWorkoutMigrations() {
   await addColumnIfMissing("cardio_sessions", "pace", "TEXT");
   await addColumnIfMissing("cardio_sessions", "speed", "REAL");
 
+  await addColumnIfMissing("meals", "meal_category", "TEXT NOT NULL DEFAULT 'Snack'");
+
   // Touch the database so the async function owns all schema preparation before the UI renders.
   await database.execAsync("PRAGMA foreign_keys = ON;");
 }
