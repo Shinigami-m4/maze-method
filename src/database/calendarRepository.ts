@@ -108,6 +108,7 @@ export async function getCalendarMonthSummaries(year: number, monthIndex: number
   const endDate = toDateKey(new Date(year, monthIndex + 1, 0));
   const summaries = new Map<string, CalendarDaySummary>();
 
+  // Calendar cells use counts/flags rather than full records so the month grid stays fast and uncluttered.
   const ensureSummary = (date: string) => {
     const current = summaries.get(date);
 
@@ -206,6 +207,8 @@ export async function getDailyLogDetails(date: string): Promise<DailyLogDetails>
     ]);
 
   const exercisesByWorkout = new Map<string, LoggedWorkoutExerciseEntry[]>();
+
+  // Group logged exercises by workout log before mapping the daily detail view.
   exerciseRows.forEach((row) => {
     const current = exercisesByWorkout.get(row.workout_log_id) ?? [];
     current.push(mapLoggedExercise(row));

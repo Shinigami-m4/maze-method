@@ -73,6 +73,7 @@ type MacroLogRow = {
 };
 
 export async function getMazeCoachRecommendation(): Promise<MazeCoachRecommendation> {
+  // The local coach reads the same profile and logs that power the app, keeping version 1 private/offline.
   const [profile, storedTone, recentWorkouts, recentNutrition] = await Promise.all([
     getUserProfile(),
     getMazeCoachTone(),
@@ -134,6 +135,8 @@ function buildLocalRecommendation({
 async function getRecentWorkoutSummary(): Promise<RecentWorkoutSummary> {
   const database = await getDatabase();
   const startDate = getDaysAgoDateKey(14);
+
+  // Recent workout context keeps recommendations responsive without needing a backend model.
   const [summaryRow, completedRow, muscleRows] = await Promise.all([
     database.getFirstAsync<WorkoutSummaryRow>(
       `SELECT COUNT(*) AS workout_count,
@@ -175,6 +178,8 @@ async function getRecentWorkoutSummary(): Promise<RecentWorkoutSummary> {
 async function getRecentNutritionSummary(): Promise<RecentNutritionSummary> {
   const database = await getDatabase();
   const startDate = getDaysAgoDateKey(7);
+
+  // Manual macro totals override meal sums for a day, matching the Nutrition tab behavior.
   const [mealRows, macroRows] = await Promise.all([
     database.getAllAsync<MealMacroRow>(
       `SELECT substr(logged_at, 1, 10) AS date,

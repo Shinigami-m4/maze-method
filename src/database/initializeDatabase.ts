@@ -15,6 +15,8 @@ export async function initializeDatabase() {
 async function runWorkoutMigrations() {
   const database = await getDatabase();
 
+  // These additive migrations protect existing local users while the portfolio project evolves.
+  // They add columns only when missing and never seed demo rows.
   await addColumnIfMissing("workout_routines", "muscle_groups_json", "TEXT NOT NULL DEFAULT '[]'");
   await addColumnIfMissing("workout_routines", "is_active", "INTEGER NOT NULL DEFAULT 1");
 

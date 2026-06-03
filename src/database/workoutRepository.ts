@@ -106,6 +106,7 @@ export async function getExerciseLibrary(): Promise<ExerciseLibraryItem[]> {
   );
   const linksByExercise = await getResourceLinksByExercise();
 
+  // Built-in exercises are static app data. User-created notes and links are layered on top from SQLite.
   const savedById = new Map(rows.map((row) => [row.id, row]));
   const builtIns = builtInExercises.map((exercise) => {
     const override = savedById.get(exercise.id);
@@ -231,6 +232,8 @@ export async function duplicateWorkoutRoutine(routineId: string) {
   }
 
   const duplicatedId = createLocalId("routine");
+
+  // Duplicate by creating new local IDs so edits to the copy never mutate the original routine.
   await saveWorkoutRoutine({
     ...routine,
     id: duplicatedId,

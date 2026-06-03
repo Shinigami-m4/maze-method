@@ -1,3 +1,5 @@
+// The schema is intentionally create-only and seed-free: Maze Method boots with empty local tables,
+// then user actions populate SQLite over time.
 export const databaseSchema = [
   "PRAGMA foreign_keys = ON;",
   `CREATE TABLE IF NOT EXISTS user_profiles (

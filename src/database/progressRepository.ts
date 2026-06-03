@@ -104,6 +104,7 @@ export async function getProgressDashboard(range: ProgressDateRange): Promise<Pr
   const profile = await getUserProfile();
   const startDate = getStartDateForRange(range);
 
+  // Every progress card reads through the same date-range filter so charts and summaries stay aligned.
   const weightFilter = createDateFilter("date", startDate);
   const measurementFilter = createDateFilter("date", startDate);
   const photoFilter = createDateFilter("date", startDate);
@@ -354,6 +355,7 @@ function buildMacroPoints(
 ): MacroChartPoint[] {
   const macroByDate = new Map<string, MacroChartPoint>();
 
+  // Meal sums provide automatic chart points; manual daily totals override matching fields when present.
   for (const row of mealMacroRows) {
     const calories = row.calories ?? 0;
     const proteinGrams = row.protein_grams ?? 0;
@@ -399,6 +401,7 @@ function buildMacroPoints(
 function buildStrengthPoints(rows: StrengthRow[]): StrengthChartPoint[] {
   const bestVolumeByDate = new Map<string, StrengthChartPoint>();
 
+  // Strength progress uses best daily volume because it is simple, explainable, and works without extra chart libs.
   for (const row of rows) {
     const sets = row.sets ?? 0;
     const reps = parseWorkoutNumber(row.reps);
@@ -540,6 +543,7 @@ function buildPhotoReminder(latestPhoto?: ProgressPhoto) {
     return { isDue: true };
   }
 
+  // A weekly progress-photo cadence is calculated locally from photo metadata, not from a backend.
   const daysSinceLastPhoto = daysBetween(latestPhoto.date, toDateKey(new Date()));
   const nextDueDate = addDays(latestPhoto.date, 7);
 

@@ -18,6 +18,7 @@ export function SimpleBarChart({
   valueFormatter = (value) => `${Math.round(value)}`,
   maxBars = 8
 }: SimpleBarChartProps) {
+  // A simple native bar chart avoids adding a charting dependency while still showing trends clearly.
   const visiblePoints = points.slice(-maxBars);
   const maxValue = Math.max(...visiblePoints.map((point) => point.value), 1);
 

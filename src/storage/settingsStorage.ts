@@ -83,9 +83,11 @@ export async function getLocalReminderSettings(): Promise<LocalReminderSettings>
   const stored = await AsyncStorage.getItem(storageKeys.reminderScheduleSettings);
 
   if (stored) {
+    // Normalize saved settings so future app versions can add fields without breaking old installs.
     return normalizeReminderSettings(JSON.parse(stored) as Partial<LocalReminderSettings>);
   }
 
+  // Older onboarding data stored simple booleans; map those flags into the detailed schedule model.
   const legacyPreferences = await getReminderPreferences();
 
   return {

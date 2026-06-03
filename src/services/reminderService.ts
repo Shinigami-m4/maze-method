@@ -21,6 +21,7 @@ const reminderContent: Record<ReminderChannelKey, { title: string; body: string 
 };
 
 export function configureLocalNotifications() {
+  // Local reminders should appear while the app is foregrounded, but they stay quiet and non-intrusive.
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowBanner: true,
@@ -32,6 +33,7 @@ export function configureLocalNotifications() {
 }
 
 export async function syncLocalReminderNotifications(settings: LocalReminderSettings) {
+  // Rescheduling from scratch prevents stale reminders when the user edits days or times.
   await cancelMazeMethodReminders();
 
   if (!hasAnyEnabledReminder(settings)) {
@@ -62,6 +64,7 @@ export async function syncLocalReminderNotifications(settings: LocalReminderSett
 
     const { hour, minute } = parseReminderTime(schedule.time);
 
+    // Expo weekly triggers use 1-7 for Sunday-Saturday, matching the app's stored day values.
     for (const weekday of schedule.days) {
       await Notifications.scheduleNotificationAsync({
         identifier: createReminderIdentifier(key, weekday),
