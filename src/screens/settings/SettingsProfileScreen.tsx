@@ -11,6 +11,7 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { Screen } from "../../components/Screen";
 import { SectionHeader } from "../../components/SectionHeader";
 import { getLocalProfileId, getUserProfile, saveUserProfile } from "../../database/profileRepository";
+import { useAuthSession } from "../../services/authSessionContext";
 import { syncLocalReminderNotifications } from "../../services/reminderService";
 import {
   getLocalReminderSettings,
@@ -72,6 +73,7 @@ const reminderKeys: ReminderChannelKey[] = ["workout", "meal", "progressPhoto"];
 const daysPerWeekOptions = [1, 2, 3, 4, 5, 6, 7];
 
 export function SettingsProfileScreen({ navigation }: Props) {
+  const authSession = useAuthSession();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [reminders, setReminders] = useState<LocalReminderSettings | null>(null);
   const [profileDraft, setProfileDraft] = useState<ProfileDraft | null>(null);
@@ -191,6 +193,21 @@ export function SettingsProfileScreen({ navigation }: Props) {
     }
   };
 
+  const handleSignOut = () => {
+    Alert.alert("Sign out?", "This signs out of cloud auth only. Local Maze Method data stays on this phone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign out",
+        style: "destructive",
+        onPress: () => {
+          void authSession.signOut().catch(() => {
+            Alert.alert("Sign out failed", "Cloud auth could not sign out. Try again.");
+          });
+        }
+      }
+    ]);
+  };
+
   return (
     <Screen>
       <View style={styles.header}>
@@ -202,6 +219,16 @@ export function SettingsProfileScreen({ navigation }: Props) {
         <AppText variant="heading">Settings/Profile</AppText>
         <View style={styles.headerSpacer} />
       </View>
+
+      <SectionHeader title="Account" />
+      <AccountStatusCard
+        email={authSession.user?.email}
+        isConfigured={authSession.isSupabaseConfigured}
+        onSignIn={() => navigation.navigate("SignIn")}
+        onSignOut={handleSignOut}
+        onSignUp={() => navigation.navigate("SignUp")}
+        status={authSession.status}
+      />
 
       <SectionHeader title="Edit profile" />
       <SettingsActionCard
@@ -323,6 +350,72 @@ function SettingsActionCard({
           </View>
         </View>
         <PrimaryButton label={actionLabel} onPress={onPress} variant="ghost" />
+      </View>
+    </Card>
+  );
+}
+
+function AccountStatusCard({
+  email,
+  isConfigured,
+  onSignIn,
+  onSignOut,
+  onSignUp,
+  status
+}: {
+  email?: string;
+  isConfigured: boolean;
+  onSignIn: () => void;
+  onSignOut: () => void;
+  onSignUp: () => void;
+  status: string;
+}) {
+  const isSignedIn = status === "signed_in";
+
+  return (
+    <Card accent={isSignedIn}>
+      <View style={styles.cardTopRow}>
+        <View style={styles.titleRow}>
+          <View style={styles.iconBadge}>
+            <Ionicons color={theme.colors.accent} name="cloud-outline" size={18} />
+          </View>
+          <View style={styles.flex}>
+            <AppText variant="subheading">{isSignedIn ? "Cloud account connected" : "Local mode active"}</AppText>
+            <AppText muted>
+              {isSignedIn
+                ? email ?? "Signed in"
+                : isConfigured
+                  ? "Sign in or create an account to prepare for future cloud sync."
+                  : "Supabase env vars are missing. Local tracking still works."}
+            </AppText>
+          </View>
+        </View>
+      </View>
+      <View style={styles.cloudStatusRow}>
+        <AppText style={styles.cloudStatusText} variant="caption">
+          Cloud sync status: placeholder
+        </AppText>
+      </View>
+      <View style={styles.accountActions}>
+        {isSignedIn ? (
+          <PrimaryButton icon="log-out-outline" label="Sign out" onPress={onSignOut} variant="ghost" />
+        ) : (
+          <>
+            <PrimaryButton
+              disabled={!isConfigured}
+              icon="log-in-outline"
+              label="Sign in"
+              onPress={onSignIn}
+            />
+            <PrimaryButton
+              disabled={!isConfigured}
+              icon="person-add-outline"
+              label="Sign up"
+              onPress={onSignUp}
+              variant="ghost"
+            />
+          </>
+        )}
       </View>
     </Card>
   );
@@ -775,11 +868,30 @@ function formatOptionalNumber(value?: number) {
 }
 
 const styles = StyleSheet.create({
+  accountActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md
+  },
   cardTopRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: theme.spacing.md,
     justifyContent: "space-between"
+  },
+  cloudStatusRow: {
+    alignSelf: "flex-start",
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs
+  },
+  cloudStatusText: {
+    color: theme.colors.accent
   },
   flex: {
     flex: 1

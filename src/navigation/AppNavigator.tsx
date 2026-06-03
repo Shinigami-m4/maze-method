@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { BarcodeScannerScreen } from "../screens/nutrition/BarcodeScannerScreen";
 import { CalendarScreen } from "../screens/calendar/CalendarScreen";
+import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen";
 import { FoodConfirmationScreen } from "../screens/nutrition/FoodConfirmationScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { MazeCoachScreen } from "../screens/mazeCoach/MazeCoachScreen";
@@ -13,6 +14,8 @@ import { NutritionScreen } from "../screens/nutrition/NutritionScreen";
 import { OnboardingNavigator } from "./OnboardingNavigator";
 import { ProgressScreen } from "../screens/progress/ProgressScreen";
 import { SettingsProfileScreen } from "../screens/settings/SettingsProfileScreen";
+import { SignInScreen } from "../screens/auth/SignInScreen";
+import { SignUpScreen } from "../screens/auth/SignUpScreen";
 import { WorkoutsScreen } from "../screens/workouts/WorkoutsScreen";
 import {
   BottomTabParamList,
@@ -73,6 +76,9 @@ export function AppNavigator({
             <RootStack.Screen component={MazeCoachScreen} name="MazeCoach" />
             <RootStack.Screen component={BarcodeScannerScreen} name="BarcodeScanner" />
             <RootStack.Screen component={FoodConfirmationScreen} name="FoodConfirmation" />
+            <RootStack.Screen component={SignInScreen} name="SignIn" />
+            <RootStack.Screen component={SignUpScreen} name="SignUp" />
+            <RootStack.Screen component={ForgotPasswordScreen} name="ForgotPassword" />
           </>
         )}
       </RootStack.Navigator>

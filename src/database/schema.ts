@@ -4,6 +4,9 @@ export const databaseSchema = [
   "PRAGMA foreign_keys = ON;",
   `CREATE TABLE IF NOT EXISTS user_profiles (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     name TEXT NOT NULL,
     age INTEGER,
     gender TEXT,
@@ -19,20 +22,28 @@ export const databaseSchema = [
     activity_level TEXT NOT NULL,
     maze_coach_tone TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS workout_routines (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     name TEXT NOT NULL,
     notes TEXT,
     muscle_groups_json TEXT NOT NULL DEFAULT '[]',
     is_active INTEGER NOT NULL DEFAULT 1,
     target_days_per_week INTEGER,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS exercises (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     name TEXT NOT NULL,
     muscle_group TEXT,
     equipment TEXT,
@@ -44,10 +55,14 @@ export const databaseSchema = [
     is_custom INTEGER NOT NULL DEFAULT 1,
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS routine_exercises (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     routine_id TEXT NOT NULL,
     exercise_id TEXT NOT NULL,
     exercise_name TEXT NOT NULL,
@@ -63,28 +78,42 @@ export const databaseSchema = [
     is_completed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
+    deleted_at TEXT,
     FOREIGN KEY (routine_id) REFERENCES workout_routines (id) ON DELETE CASCADE
   );`,
   `CREATE TABLE IF NOT EXISTS exercise_resource_links (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     exercise_id TEXT NOT NULL,
     url TEXT NOT NULL,
     label TEXT NOT NULL,
     notes TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS workout_logs (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     routine_id TEXT,
     routine_name TEXT,
     started_at TEXT NOT NULL,
     ended_at TEXT,
     notes TEXT,
     created_at TEXT NOT NULL,
+    updated_at TEXT,
+    deleted_at TEXT,
     FOREIGN KEY (routine_id) REFERENCES workout_routines (id) ON DELETE SET NULL
   );`,
   `CREATE TABLE IF NOT EXISTS logged_workout_exercises (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     workout_log_id TEXT NOT NULL,
     exercise_id TEXT,
     exercise_name TEXT NOT NULL,
@@ -99,11 +128,17 @@ export const databaseSchema = [
     is_personal_record INTEGER NOT NULL DEFAULT 0,
     is_completed INTEGER NOT NULL DEFAULT 0,
     notes TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    deleted_at TEXT,
     FOREIGN KEY (workout_log_id) REFERENCES workout_logs (id) ON DELETE CASCADE,
     FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE SET NULL
   );`,
   `CREATE TABLE IF NOT EXISTS meals (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     logged_at TEXT NOT NULL,
     meal_name TEXT NOT NULL,
     meal_category TEXT NOT NULL DEFAULT 'Snack',
@@ -111,34 +146,58 @@ export const databaseSchema = [
     protein_grams REAL,
     carb_grams REAL,
     fat_grams REAL,
-    notes TEXT
+    notes TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS daily_macro_logs (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     date TEXT NOT NULL UNIQUE,
     calories INTEGER,
     protein_grams REAL,
     carb_grams REAL,
     fat_grams REAL,
-    water_ounces REAL
+    water_ounces REAL,
+    created_at TEXT,
+    updated_at TEXT,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS body_weight_entries (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     date TEXT NOT NULL,
     weight REAL NOT NULL,
     units TEXT NOT NULL,
-    notes TEXT
+    notes TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS body_measurement_entries (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     date TEXT NOT NULL,
     measurement_type TEXT NOT NULL,
     value REAL NOT NULL,
     units TEXT NOT NULL,
-    notes TEXT
+    notes TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS cardio_sessions (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     date TEXT NOT NULL,
     activity_type TEXT NOT NULL,
     duration_minutes INTEGER NOT NULL,
@@ -146,34 +205,54 @@ export const databaseSchema = [
     pace TEXT,
     speed REAL,
     calories_burned INTEGER,
-    notes TEXT
+    notes TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS progress_photos (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     date TEXT NOT NULL,
     local_uri TEXT NOT NULL,
     angle TEXT,
     notes TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS calendar_entries (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     date TEXT NOT NULL,
     entry_type TEXT NOT NULL,
     title TEXT NOT NULL,
     related_id TEXT,
     notes TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS daily_notes (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     date TEXT NOT NULL,
     note TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS personal_records (
     id TEXT PRIMARY KEY NOT NULL,
+    local_id TEXT,
+    remote_id TEXT,
+    user_id TEXT,
     exercise_id TEXT,
     exercise_name TEXT NOT NULL,
     record_type TEXT NOT NULL,
@@ -181,6 +260,9 @@ export const databaseSchema = [
     units TEXT,
     achieved_at TEXT NOT NULL,
     notes TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    deleted_at TEXT,
     FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE SET NULL
   );`
 ];

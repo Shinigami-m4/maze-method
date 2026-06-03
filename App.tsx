@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { initializeDatabase } from "./src/database/initializeDatabase";
+import { AuthSessionProvider } from "./src/services/authSessionContext";
 import { configureLocalNotifications } from "./src/services/reminderService";
 import { getOnboardingCompleted } from "./src/storage/settingsStorage";
 import { colors } from "./src/theme/colors";
@@ -40,10 +41,12 @@ export default function App() {
   return (
     <>
       <StatusBar style="light" />
-      <AppNavigator
-        isOnboardingComplete={isOnboardingComplete}
-        onOnboardingComplete={() => setIsOnboardingComplete(true)}
-      />
+      <AuthSessionProvider>
+        <AppNavigator
+          isOnboardingComplete={isOnboardingComplete}
+          onOnboardingComplete={() => setIsOnboardingComplete(true)}
+        />
+      </AuthSessionProvider>
     </>
   );
 }

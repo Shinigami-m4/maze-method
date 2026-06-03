@@ -18,6 +18,7 @@ The app uses a premium dark fitness-technology style: matte black surfaces, clea
 - Maze Coach local mock recommendation engine with daily calorie and macro targets, suggested workout, suggested meals, recovery advice, and explanation.
 - Local reminders for workouts, meal logging, and weekly progress photos.
 - Settings/Profile screen for editing profile, goals, units, Maze Coach tone, reminders, and future placeholders.
+- Optional Supabase authentication foundation with sign in, sign up, forgot password placeholder, and cloud status in Settings/Profile.
 
 ## Tech Stack
 
@@ -31,6 +32,7 @@ The app uses a premium dark fitness-technology style: matte black surfaces, clea
 - Expo Image Picker
 - Expo File System
 - Expo Camera
+- Supabase JavaScript client
 - Ionicons via `@expo/vector-icons`
 
 ## App Architecture
@@ -49,7 +51,7 @@ src/
   utils/               Small shared helpers
 ```
 
-The code is organized around feature areas. SQLite repositories keep database reads/writes out of screen components, while shared service files hold business logic such as nutrition targets, barcode lookup, Maze Coach recommendations, and notification scheduling.
+The code is organized around feature areas. SQLite repositories keep database reads/writes out of screen components, while shared service files hold business logic such as nutrition targets, barcode lookup, optional Supabase auth, Maze Coach recommendations, and notification scheduling.
 
 ## Screens
 
@@ -60,6 +62,7 @@ The code is organized around feature areas. SQLite repositories keep database re
 - **Progress:** charts, body measurements, progress photos, comparison view, cardio history, and records.
 - **Maze Coach:** local recommendation screen with targets, workout, meals, recovery, explanation, and insights.
 - **Settings/Profile:** profile editing, goal editing, unit changes, Maze Coach tone, reminders, and future settings placeholders.
+- **Auth:** optional cloud sign in, sign up, forgot password placeholder, and account status views.
 
 ## Local-First Data
 
@@ -90,6 +93,8 @@ AsyncStorage is used for simple settings:
 
 The app does not seed fake user data. Built-in exercises are static reference data, but user logs start empty until the user creates entries.
 
+Cloud auth is optional. If Supabase environment variables are not configured, Maze Method stays usable in local mode with SQLite and AsyncStorage.
+
 ## Maze Coach
 
 Maze Coach is a local mock recommendation engine for version 1. It does not call OpenAI directly and does not include any API key in the mobile app.
@@ -116,6 +121,19 @@ It recommends:
 
 Future OpenAI integration should happen through a backend, such as a Supabase Edge Function, so secrets remain server-side.
 
+## Supabase Auth Foundation
+
+Version 2A adds an optional Supabase auth layer for future cloud sync. The mobile app reads only public Expo environment variables:
+
+```bash
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+```
+
+Do not put Supabase service role keys, database passwords, or OpenAI API keys in the mobile app. Future sync and OpenAI-powered Maze Coach work should go through a backend or Supabase Edge Function.
+
+The Supabase schema plan lives in `docs/supabase-schema.md`.
+
 ## Barcode Nutrition Logging
 
 The Nutrition tab includes a `Scan Food` flow built with Expo Camera. The scanner requests camera permission before opening, pauses after the first detected barcode to avoid duplicate submissions, looks up product data through Open Food Facts, and sends the result to an editable confirmation screen.
@@ -129,6 +147,8 @@ Install Node.js, npm, and Expo tooling. For iOS testing on a physical phone, ins
 ```bash
 npm install
 ```
+
+To test optional cloud auth, copy `.env.example` to `.env` and fill in your Supabase project URL and public anon key. Leave `.env` uncommitted.
 
 If Expo reports dependency mismatch warnings, run:
 

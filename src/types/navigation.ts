@@ -18,6 +18,9 @@ export type RootStackParamList = {
     food: FoodLookupProduct;
     initialMealCategory?: MealCategory;
   };
+  SignIn: undefined;
+  SignUp: undefined;
+  ForgotPassword: undefined;
 };
 
 export type OnboardingStackParamList = {

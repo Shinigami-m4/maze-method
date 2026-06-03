@@ -10,6 +10,7 @@ export async function initializeDatabase() {
   }
 
   await runWorkoutMigrations();
+  await runCloudSyncMigrations();
 }
 
 async function runWorkoutMigrations() {
@@ -41,6 +42,69 @@ async function runWorkoutMigrations() {
 
   // Touch the database so the async function owns all schema preparation before the UI renders.
   await database.execAsync("PRAGMA foreign_keys = ON;");
+}
+
+async function runCloudSyncMigrations() {
+  const database = await getDatabase();
+  const cloudReadyTables = [
+    "user_profiles",
+    "workout_routines",
+    "exercises",
+    "routine_exercises",
+    "exercise_resource_links",
+    "workout_logs",
+    "logged_workout_exercises",
+    "meals",
+    "daily_macro_logs",
+    "body_weight_entries",
+    "body_measurement_entries",
+    "cardio_sessions",
+    "progress_photos",
+    "calendar_entries",
+    "daily_notes",
+    "personal_records"
+  ];
+
+  // These nullable sync fields keep Version 1 local records intact while making
+  // every table ready for a future Supabase sync mapper.
+  for (const tableName of cloudReadyTables) {
+    await addColumnIfMissing(tableName, "local_id", "TEXT");
+    await addColumnIfMissing(tableName, "remote_id", "TEXT");
+    await addColumnIfMissing(tableName, "user_id", "TEXT");
+    await addColumnIfMissing(tableName, "created_at", "TEXT");
+    await addColumnIfMissing(tableName, "updated_at", "TEXT");
+    await addColumnIfMissing(tableName, "deleted_at", "TEXT");
+
+    await database.execAsync(
+      `UPDATE ${tableName}
+       SET
+         local_id = COALESCE(local_id, id),
+         created_at = COALESCE(created_at, datetime('now')),
+         updated_at = COALESCE(updated_at, created_at, datetime('now'))
+       WHERE local_id IS NULL OR created_at IS NULL OR updated_at IS NULL;`
+    );
+
+    await database.execAsync(
+      `CREATE TRIGGER IF NOT EXISTS ${tableName}_sync_insert_defaults
+       AFTER INSERT ON ${tableName}
+       FOR EACH ROW
+       BEGIN
+         UPDATE ${tableName}
+         SET
+           local_id = COALESCE(local_id, NEW.id),
+           created_at = COALESCE(created_at, datetime('now')),
+           updated_at = COALESCE(updated_at, created_at, datetime('now'))
+         WHERE id = NEW.id;
+       END;`
+    );
+
+    await database.execAsync(
+      `CREATE INDEX IF NOT EXISTS ${tableName}_remote_id_idx ON ${tableName} (remote_id);`
+    );
+    await database.execAsync(
+      `CREATE INDEX IF NOT EXISTS ${tableName}_user_id_idx ON ${tableName} (user_id);`
+    );
+  }
 }
 
 async function addColumnIfMissing(tableName: string, columnName: string, columnDefinition: string) {

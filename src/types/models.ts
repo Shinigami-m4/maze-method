@@ -9,6 +9,13 @@ export type MazeCoachTone =
   | "professional_trainer"
   | "motivational_not_corny";
 
+export interface CloudSyncMetadata {
+  localId?: string;
+  remoteId?: string;
+  userId?: string;
+  deletedAt?: string;
+}
+
 export type ReminderPreferences = {
   workout: boolean;
   nutrition: boolean;
@@ -16,7 +23,7 @@ export type ReminderPreferences = {
   weighIn: boolean;
 };
 
-export interface UserProfile {
+export interface UserProfile extends CloudSyncMetadata {
   id: string;
   name: string;
   age?: number;
@@ -36,7 +43,7 @@ export interface UserProfile {
   updatedAt: string;
 }
 
-export interface WorkoutRoutine {
+export interface WorkoutRoutine extends CloudSyncMetadata {
   id: string;
   name: string;
   notes?: string;
@@ -45,7 +52,7 @@ export interface WorkoutRoutine {
   updatedAt: string;
 }
 
-export interface Exercise {
+export interface Exercise extends CloudSyncMetadata {
   id: string;
   name: string;
   muscleGroup?: string;
@@ -56,16 +63,17 @@ export interface Exercise {
   updatedAt: string;
 }
 
-export interface WorkoutLog {
+export interface WorkoutLog extends CloudSyncMetadata {
   id: string;
   routineId?: string;
   startedAt: string;
   endedAt?: string;
   notes?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
-export interface LoggedWorkoutExercise {
+export interface LoggedWorkoutExercise extends CloudSyncMetadata {
   id: string;
   workoutLogId: string;
   exerciseId?: string;
@@ -76,9 +84,11 @@ export interface LoggedWorkoutExercise {
   durationSeconds?: number;
   distance?: number;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface MealLog {
+export interface MealLog extends CloudSyncMetadata {
   id: string;
   loggedAt: string;
   mealName: string;
@@ -88,9 +98,11 @@ export interface MealLog {
   carbGrams?: number;
   fatGrams?: number;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface DailyMacroLog {
+export interface DailyMacroLog extends CloudSyncMetadata {
   id: string;
   date: string;
   calories?: number;
@@ -98,26 +110,32 @@ export interface DailyMacroLog {
   carbGrams?: number;
   fatGrams?: number;
   waterOunces?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface BodyWeightEntry {
+export interface BodyWeightEntry extends CloudSyncMetadata {
   id: string;
   date: string;
   weight: number;
   units: UnitPreference;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface BodyMeasurementEntry {
+export interface BodyMeasurementEntry extends CloudSyncMetadata {
   id: string;
   date: string;
   measurementType: string;
   value: number;
   units: UnitPreference;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface CardioSession {
+export interface CardioSession extends CloudSyncMetadata {
   id: string;
   date: string;
   activityType: string;
@@ -125,18 +143,21 @@ export interface CardioSession {
   distance?: number;
   caloriesBurned?: number;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface ProgressPhoto {
+export interface ProgressPhoto extends CloudSyncMetadata {
   id: string;
   date: string;
   localUri: string;
   angle?: "front" | "side" | "back" | "other";
   notes?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
-export interface CalendarEntry {
+export interface CalendarEntry extends CloudSyncMetadata {
   id: string;
   date: string;
   entryType: "workout" | "cardio" | "meal" | "progress_photo" | "note" | "measurement";
@@ -144,9 +165,10 @@ export interface CalendarEntry {
   relatedId?: string;
   notes?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
-export interface DailyNote {
+export interface DailyNote extends CloudSyncMetadata {
   id: string;
   date: string;
   note: string;
@@ -154,7 +176,7 @@ export interface DailyNote {
   updatedAt: string;
 }
 
-export interface PersonalRecord {
+export interface PersonalRecord extends CloudSyncMetadata {
   id: string;
   exerciseId?: string;
   exerciseName: string;
@@ -163,4 +185,6 @@ export interface PersonalRecord {
   units?: string;
   achievedAt: string;
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
