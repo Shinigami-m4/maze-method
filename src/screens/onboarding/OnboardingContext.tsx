@@ -1,14 +1,17 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 
 import { getLocalProfileId, saveUserProfile } from "../../database/profileRepository";
+import { syncLocalReminderNotifications } from "../../services/reminderService";
 import {
   saveMazeCoachTone,
+  saveLocalReminderSettings,
   saveReminderPreferences,
   saveUnitPreference,
   setOnboardingCompleted
 } from "../../storage/settingsStorage";
 import { OnboardingDraft } from "../../types/onboarding";
 import { UserProfile } from "../../types/models";
+import { recommendedReminderSettings } from "../../types/reminders";
 
 type OnboardingContextValue = {
   draft: OnboardingDraft;
@@ -73,10 +76,27 @@ export function OnboardingProvider({ children, onComplete }: OnboardingProviderP
 
         // Structured profile data lives in SQLite. Simple boot/settings flags live in AsyncStorage.
         await saveUserProfile(profile);
+        const reminderSettings = {
+          workout: {
+            ...recommendedReminderSettings.workout,
+            enabled: draft.reminderPreferences.workout
+          },
+          meal: {
+            ...recommendedReminderSettings.meal,
+            enabled: draft.reminderPreferences.nutrition
+          },
+          progressPhoto: {
+            ...recommendedReminderSettings.progressPhoto,
+            enabled: draft.reminderPreferences.progressPhoto
+          }
+        };
+
         await Promise.all([
           saveUnitPreference(draft.units),
           saveMazeCoachTone(draft.mazeCoachTone),
           saveReminderPreferences(draft.reminderPreferences),
+          saveLocalReminderSettings(reminderSettings),
+          syncLocalReminderNotifications(reminderSettings),
           setOnboardingCompleted(true)
         ]);
 

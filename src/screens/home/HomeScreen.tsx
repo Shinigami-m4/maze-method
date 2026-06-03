@@ -12,7 +12,10 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { Screen } from "../../components/Screen";
 import { SectionHeader } from "../../components/SectionHeader";
 import { getUserProfile } from "../../database/profileRepository";
-import { getMazeCoachRecommendation } from "../../services/mazeCoach/mockMazeCoach";
+import {
+  getMazeCoachRecommendation,
+  MazeCoachRecommendation
+} from "../../services/mazeCoachService";
 import { theme } from "../../theme/theme";
 import { UserProfile } from "../../types/models";
 import {
@@ -26,16 +29,17 @@ type RootNavigation = NativeStackNavigationProp<RootStackParamList>;
 
 export function HomeScreen({ navigation }: Props) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [recommendation, setRecommendation] = useState<MazeCoachRecommendation | null>(null);
   const rootNavigation = navigation.getParent<RootNavigation>();
-  const recommendation = getMazeCoachRecommendation(profile);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
 
-      void getUserProfile().then((storedProfile) => {
+      void Promise.all([getUserProfile(), getMazeCoachRecommendation()]).then(([storedProfile, nextRecommendation]) => {
         if (isActive) {
           setProfile(storedProfile);
+          setRecommendation(nextRecommendation);
         }
       });
 
@@ -70,15 +74,15 @@ export function HomeScreen({ navigation }: Props) {
       >
         <Card accent style={styles.coachCard}>
           <View style={styles.cardTopRow}>
-            <View style={styles.iconDisc}>
-              <Ionicons color={theme.colors.text} name="navigate" size={18} />
-            </View>
-            <AppText variant="caption">Maze Coach</AppText>
+          <View style={styles.iconDisc}>
+            <Ionicons color={theme.colors.text} name="navigate" size={18} />
           </View>
-          <AppText style={styles.cardHeadline} variant="heading">
-            {recommendation.headline}
-          </AppText>
-          <AppText muted>Open your local recommendation engine.</AppText>
+          <AppText variant="caption">Maze Coach Card</AppText>
+        </View>
+        <AppText style={styles.cardHeadline} variant="heading">
+          {recommendation?.headline ?? "Your local path is loading."}
+        </AppText>
+        <AppText muted>Open Maze Coach Recommendations.</AppText>
         </Card>
       </Pressable>
 
@@ -88,7 +92,7 @@ export function HomeScreen({ navigation }: Props) {
           <Ionicons color={theme.colors.accent} name="arrow-up" size={18} />
         </View>
         <AppText style={styles.cardHeadline} variant="heading">
-          Strength first, nutrition logged, progress captured.
+          {recommendation?.suggestedWorkout ?? "Strength first, nutrition logged, progress captured."}
         </AppText>
         <AppText muted>
           Keep one clear priority per category and let the week build from there.
@@ -102,9 +106,11 @@ export function HomeScreen({ navigation }: Props) {
             Macros
           </AppText>
           <AppText style={styles.metricText} variant="heading">
-            --
+            {recommendation ? recommendation.dailyCalories : "--"}
           </AppText>
-          <AppText muted>No meals logged today.</AppText>
+          <AppText muted>
+            {recommendation ? `${recommendation.dailyProtein}g protein target.` : "No meals logged today."}
+          </AppText>
         </Card>
         <Card style={styles.summaryCard}>
           <AppText muted variant="caption">

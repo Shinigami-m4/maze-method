@@ -1,17 +1,42 @@
-import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { Alert, Pressable, StyleSheet, Switch, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { AppText } from "../../components/AppText";
 import { Card } from "../../components/Card";
 import { IconButton } from "../../components/IconButton";
+import { PrimaryButton } from "../../components/PrimaryButton";
 import { Screen } from "../../components/Screen";
 import { SectionHeader } from "../../components/SectionHeader";
-import { getUserProfile } from "../../database/profileRepository";
-import { getReminderPreferences } from "../../storage/settingsStorage";
+import { getLocalProfileId, getUserProfile, saveUserProfile } from "../../database/profileRepository";
+import { syncLocalReminderNotifications } from "../../services/reminderService";
+import {
+  getLocalReminderSettings,
+  saveLocalReminderSettings,
+  saveMazeCoachTone,
+  saveUnitPreference
+} from "../../storage/settingsStorage";
+import { activityLevelOptions, experienceOptions, fitnessGoalOptions, mazeCoachToneOptions, trainingLocationOptions, unitOptions } from "../../data/onboardingOptions";
 import { theme } from "../../theme/theme";
-import { ReminderPreferences, UserProfile } from "../../types/models";
+import {
+  ActivityLevel,
+  ExperienceLevel,
+  FitnessGoal,
+  MazeCoachTone,
+  TrainingLocation,
+  UnitPreference,
+  UserProfile
+} from "../../types/models";
 import { RootStackParamList } from "../../types/navigation";
+import {
+  LocalReminderSettings,
+  recommendedReminderSettings,
+  ReminderChannelKey,
+  reminderChannelLabels,
+  weekDayOptions
+} from "../../types/reminders";
 import {
   formatActivityLevel,
   formatExperience,
@@ -20,17 +45,151 @@ import {
   formatTrainingLocation,
   formatUnits
 } from "../../utils/labels";
+import { SettingsField } from "./components/SettingsField";
+import { SettingsModal } from "./components/SettingsModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "SettingsProfile">;
 
+type ProfileDraft = {
+  name: string;
+  age: string;
+  gender: string;
+  height: string;
+  weight: string;
+  goalWeight: string;
+};
+
+type GoalsDraft = {
+  fitnessGoal: FitnessGoal;
+  experienceLevel: ExperienceLevel;
+  trainingLocation: TrainingLocation;
+  daysPerWeek: number;
+  dietaryPreference: string;
+  activityLevel: ActivityLevel;
+};
+
+const reminderKeys: ReminderChannelKey[] = ["workout", "meal", "progressPhoto"];
+const daysPerWeekOptions = [1, 2, 3, 4, 5, 6, 7];
+
 export function SettingsProfileScreen({ navigation }: Props) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [reminders, setReminders] = useState<ReminderPreferences | null>(null);
+  const [reminders, setReminders] = useState<LocalReminderSettings | null>(null);
+  const [profileDraft, setProfileDraft] = useState<ProfileDraft | null>(null);
+  const [goalsDraft, setGoalsDraft] = useState<GoalsDraft | null>(null);
+  const [unitDraft, setUnitDraft] = useState<UnitPreference | null>(null);
+  const [toneDraft, setToneDraft] = useState<MazeCoachTone | null>(null);
+  const [reminderDraft, setReminderDraft] = useState<LocalReminderSettings | null>(null);
 
-  useEffect(() => {
-    void getUserProfile().then(setProfile);
-    void getReminderPreferences().then(setReminders);
+  const loadSettings = useCallback(async () => {
+    const [storedProfile, storedReminders] = await Promise.all([
+      getUserProfile(),
+      getLocalReminderSettings()
+    ]);
+    setProfile(storedProfile);
+    setReminders(storedReminders);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSettings();
+    }, [loadSettings])
+  );
+
+  const handleSaveProfile = async () => {
+    if (!profileDraft) {
+      return;
+    }
+
+    const baseProfile = createBaseProfile(profile);
+    const nextProfile: UserProfile = {
+      ...baseProfile,
+      name: profileDraft.name.trim() || "Athlete",
+      age: parseOptionalNumber(profileDraft.age),
+      gender: profileDraft.gender.trim() || undefined,
+      height: parseOptionalNumber(profileDraft.height),
+      weight: parseOptionalNumber(profileDraft.weight),
+      goalWeight: parseOptionalNumber(profileDraft.goalWeight),
+      updatedAt: new Date().toISOString()
+    };
+
+    await saveUserProfile(nextProfile);
+    setProfile(nextProfile);
+    setProfileDraft(null);
+  };
+
+  const handleSaveGoals = async () => {
+    if (!goalsDraft) {
+      return;
+    }
+
+    const baseProfile = createBaseProfile(profile);
+    const nextProfile: UserProfile = {
+      ...baseProfile,
+      fitnessGoal: goalsDraft.fitnessGoal,
+      experienceLevel: goalsDraft.experienceLevel,
+      trainingLocation: goalsDraft.trainingLocation,
+      daysPerWeek: goalsDraft.daysPerWeek,
+      dietaryPreference: goalsDraft.dietaryPreference.trim() || "None",
+      activityLevel: goalsDraft.activityLevel,
+      updatedAt: new Date().toISOString()
+    };
+
+    await saveUserProfile(nextProfile);
+    setProfile(nextProfile);
+    setGoalsDraft(null);
+  };
+
+  const handleSaveUnits = async () => {
+    if (!unitDraft) {
+      return;
+    }
+
+    const nextProfile = {
+      ...createBaseProfile(profile),
+      units: unitDraft,
+      updatedAt: new Date().toISOString()
+    };
+
+    await Promise.all([saveUserProfile(nextProfile), saveUnitPreference(unitDraft)]);
+    setProfile(nextProfile);
+    setUnitDraft(null);
+  };
+
+  const handleSaveTone = async () => {
+    if (!toneDraft) {
+      return;
+    }
+
+    const nextProfile = {
+      ...createBaseProfile(profile),
+      mazeCoachTone: toneDraft,
+      updatedAt: new Date().toISOString()
+    };
+
+    await Promise.all([saveUserProfile(nextProfile), saveMazeCoachTone(toneDraft)]);
+    setProfile(nextProfile);
+    setToneDraft(null);
+  };
+
+  const handleSaveReminders = async () => {
+    if (!reminderDraft) {
+      return;
+    }
+
+    await saveLocalReminderSettings(reminderDraft);
+    setReminders(reminderDraft);
+    setReminderDraft(null);
+
+    try {
+      const result = await syncLocalReminderNotifications(reminderDraft);
+
+      if (!result.granted) {
+        Alert.alert("Notifications off", "Reminder settings were saved, but iOS notification permission is off.");
+      }
+    } catch {
+      Alert.alert("Reminder sync failed", "Reminder settings were saved, but local notifications could not be scheduled.");
+    }
+  };
 
   return (
     <Screen>
@@ -40,59 +199,596 @@ export function SettingsProfileScreen({ navigation }: Props) {
           icon="chevron-back"
           onPress={() => navigation.goBack()}
         />
-        <AppText variant="heading">Settings</AppText>
+        <AppText variant="heading">Settings/Profile</AppText>
         <View style={styles.headerSpacer} />
       </View>
 
-      <SectionHeader title="Profile" />
-      <Card>
-        <SettingsRow label="Name" value={profile?.name ?? "Athlete"} />
-        <SettingsRow label="Goal" value={profile ? formatFitnessGoal(profile.fitnessGoal) : "--"} />
-        <SettingsRow
-          label="Experience"
-          value={profile ? formatExperience(profile.experienceLevel) : "--"}
-        />
-        <SettingsRow
-          label="Training"
-          value={profile ? formatTrainingLocation(profile.trainingLocation) : "--"}
-        />
-        <SettingsRow
-          label="Activity"
-          value={profile ? formatActivityLevel(profile.activityLevel) : "--"}
-        />
-      </Card>
+      <SectionHeader title="Edit profile" />
+      <SettingsActionCard
+        icon="person-outline"
+        title={profile?.name ?? "Athlete"}
+        value={formatProfileSummary(profile)}
+        actionLabel="Edit profile"
+        onPress={() => setProfileDraft(createProfileDraft(profile))}
+      />
+
+      <SectionHeader title="Edit goals" />
+      <SettingsActionCard
+        icon="flag-outline"
+        title={profile ? formatFitnessGoal(profile.fitnessGoal) : "Build muscle"}
+        value={profile ? `${formatExperience(profile.experienceLevel)} - ${profile.daysPerWeek} days/week` : "Set training goal and experience."}
+        actionLabel="Edit goals"
+        onPress={() => setGoalsDraft(createGoalsDraft(profile))}
+      />
 
       <SectionHeader title="Preferences" />
-      <Card>
-        <SettingsRow label="Units" value={profile ? formatUnits(profile.units) : "lb / in"} />
-        <SettingsRow
-          label="Maze Coach tone"
-          value={profile ? formatMazeCoachTone(profile.mazeCoachTone) : "Motivational but not corny"}
+      <View style={styles.stack}>
+        <SettingsActionCard
+          icon="scale-outline"
+          title="Change units"
+          value={profile ? formatUnits(profile.units) : "lb / in"}
+          actionLabel="Change units"
+          onPress={() => setUnitDraft(profile?.units ?? "imperial")}
         />
-        <SettingsRow label="Theme" value="Dark" />
-      </Card>
+        <SettingsActionCard
+          icon="navigate-outline"
+          title="Change Maze Coach tone"
+          value={profile ? formatMazeCoachTone(profile.mazeCoachTone) : "Motivational but not corny"}
+          actionLabel="Change tone"
+          onPress={() => setToneDraft(profile?.mazeCoachTone ?? "motivational_not_corny")}
+        />
+      </View>
 
-      <SectionHeader title="Reminders" />
-      <Card>
-        <SettingsRow label="Workout" value={reminders?.workout ? "On" : "Off"} />
-        <SettingsRow label="Nutrition" value={reminders?.nutrition ? "On" : "Off"} />
-        <SettingsRow label="Progress photo" value={reminders?.progressPhoto ? "On" : "Off"} />
-        <SettingsRow label="Weigh-in" value={reminders?.weighIn ? "On" : "Off"} />
-      </Card>
+      <SectionHeader title="Manage reminders" />
+      <SettingsActionCard
+        icon="notifications-outline"
+        title="Manage reminders"
+        value={formatReminderSummary(reminders)}
+        actionLabel="Manage reminders"
+        onPress={() => setReminderDraft(cloneReminderSettings(reminders ?? recommendedReminderSettings))}
+      />
+
+      <SectionHeader title="Theme placeholder" />
+      <PlaceholderCard
+        icon="contrast-outline"
+        title="Theme placeholder"
+        value="Dark theme is active for version 1. Light mode can be added later."
+      />
+
+      <SectionHeader title="Data management placeholder" />
+      <PlaceholderCard
+        icon="server-outline"
+        title="Data management placeholder"
+        value="Data is local-first in SQLite and AsyncStorage. Export, reset, and cloud sync can be added later."
+      />
+
+      <ProfileModal
+        draft={profileDraft}
+        onChangeDraft={setProfileDraft}
+        onClose={() => setProfileDraft(null)}
+        onSave={() => void handleSaveProfile()}
+        units={profile?.units ?? "imperial"}
+      />
+      <GoalsModal
+        draft={goalsDraft}
+        onChangeDraft={setGoalsDraft}
+        onClose={() => setGoalsDraft(null)}
+        onSave={() => void handleSaveGoals()}
+      />
+      <UnitsModal
+        draft={unitDraft}
+        onChangeDraft={setUnitDraft}
+        onClose={() => setUnitDraft(null)}
+        onSave={() => void handleSaveUnits()}
+      />
+      <ToneModal
+        draft={toneDraft}
+        onChangeDraft={setToneDraft}
+        onClose={() => setToneDraft(null)}
+        onSave={() => void handleSaveTone()}
+      />
+      <RemindersModal
+        draft={reminderDraft}
+        onChangeDraft={setReminderDraft}
+        onClose={() => setReminderDraft(null)}
+        onSave={() => void handleSaveReminders()}
+      />
     </Screen>
   );
 }
 
-function SettingsRow({ label, value }: { label: string; value: string }) {
+function SettingsActionCard({
+  icon,
+  title,
+  value,
+  actionLabel,
+  onPress
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  title: string;
+  value: string;
+  actionLabel: string;
+  onPress: () => void;
+}) {
   return (
-    <View style={styles.row}>
-      <AppText muted>{label}</AppText>
-      <AppText style={styles.rowValue}>{value}</AppText>
+    <Card>
+      <View style={styles.cardTopRow}>
+        <View style={styles.titleRow}>
+          <View style={styles.iconBadge}>
+            <Ionicons color={theme.colors.accent} name={icon} size={18} />
+          </View>
+          <View style={styles.flex}>
+            <AppText variant="subheading">{title}</AppText>
+            <AppText muted>{value}</AppText>
+          </View>
+        </View>
+        <PrimaryButton label={actionLabel} onPress={onPress} variant="ghost" />
+      </View>
+    </Card>
+  );
+}
+
+function PlaceholderCard({
+  icon,
+  title,
+  value
+}: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  title: string;
+  value: string;
+}) {
+  return (
+    <Card style={styles.placeholderCard}>
+      <Ionicons color={theme.colors.accent} name={icon} size={24} />
+      <View style={styles.flex}>
+        <AppText variant="subheading">{title}</AppText>
+        <AppText muted>{value}</AppText>
+      </View>
+    </Card>
+  );
+}
+
+function ProfileModal({
+  draft,
+  units,
+  onChangeDraft,
+  onClose,
+  onSave
+}: {
+  draft: ProfileDraft | null;
+  units: UnitPreference;
+  onChangeDraft: (draft: ProfileDraft | null) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const updateDraft = (updates: Partial<ProfileDraft>) => {
+    onChangeDraft(draft ? { ...draft, ...updates } : draft);
+  };
+
+  return (
+    <SettingsModal visible={Boolean(draft)} title="Edit profile" onClose={onClose}>
+      {draft ? (
+        <>
+          <SettingsField label="Name" onChangeText={(name) => updateDraft({ name })} value={draft.name} />
+          <View style={styles.formGrid}>
+            <SettingsField
+              keyboardType="number-pad"
+              label="Age"
+              onChangeText={(age) => updateDraft({ age })}
+              value={draft.age}
+            />
+            <SettingsField
+              label="Gender"
+              onChangeText={(gender) => updateDraft({ gender })}
+              value={draft.gender}
+            />
+          </View>
+          <View style={styles.formGrid}>
+            <SettingsField
+              keyboardType="decimal-pad"
+              label={units === "metric" ? "Height (cm)" : "Height (in)"}
+              onChangeText={(height) => updateDraft({ height })}
+              value={draft.height}
+            />
+            <SettingsField
+              keyboardType="decimal-pad"
+              label={units === "metric" ? "Weight (kg)" : "Weight (lb)"}
+              onChangeText={(weight) => updateDraft({ weight })}
+              value={draft.weight}
+            />
+          </View>
+          <SettingsField
+            keyboardType="decimal-pad"
+            label={units === "metric" ? "Goal weight (kg)" : "Goal weight (lb)"}
+            onChangeText={(goalWeight) => updateDraft({ goalWeight })}
+            value={draft.goalWeight}
+          />
+          <PrimaryButton icon="save-outline" label="Save profile" onPress={onSave} />
+        </>
+      ) : null}
+    </SettingsModal>
+  );
+}
+
+function GoalsModal({
+  draft,
+  onChangeDraft,
+  onClose,
+  onSave
+}: {
+  draft: GoalsDraft | null;
+  onChangeDraft: (draft: GoalsDraft | null) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const updateDraft = (updates: Partial<GoalsDraft>) => {
+    onChangeDraft(draft ? { ...draft, ...updates } : draft);
+  };
+
+  return (
+    <SettingsModal visible={Boolean(draft)} title="Edit goals" onClose={onClose}>
+      {draft ? (
+        <>
+          <OptionGroup
+            label="Fitness goal"
+            options={fitnessGoalOptions}
+            selectedValue={draft.fitnessGoal}
+            onSelect={(fitnessGoal) => updateDraft({ fitnessGoal })}
+          />
+          <OptionGroup
+            label="Experience"
+            options={experienceOptions}
+            selectedValue={draft.experienceLevel}
+            onSelect={(experienceLevel) => updateDraft({ experienceLevel })}
+          />
+          <OptionGroup
+            label="Training location"
+            options={trainingLocationOptions}
+            selectedValue={draft.trainingLocation}
+            onSelect={(trainingLocation) => updateDraft({ trainingLocation })}
+          />
+          <AppText muted variant="caption">
+            Days per week
+          </AppText>
+          <View style={styles.optionWrap}>
+            {daysPerWeekOptions.map((day) => (
+              <OptionPill
+                key={day}
+                label={String(day)}
+                selected={draft.daysPerWeek === day}
+                onPress={() => updateDraft({ daysPerWeek: day })}
+              />
+            ))}
+          </View>
+          <OptionGroup
+            label="Activity level"
+            options={activityLevelOptions}
+            selectedValue={draft.activityLevel}
+            onSelect={(activityLevel) => updateDraft({ activityLevel })}
+          />
+          <SettingsField
+            label="Dietary preference"
+            onChangeText={(dietaryPreference) => updateDraft({ dietaryPreference })}
+            value={draft.dietaryPreference}
+          />
+          <PrimaryButton icon="save-outline" label="Save goals" onPress={onSave} />
+        </>
+      ) : null}
+    </SettingsModal>
+  );
+}
+
+function UnitsModal({
+  draft,
+  onChangeDraft,
+  onClose,
+  onSave
+}: {
+  draft: UnitPreference | null;
+  onChangeDraft: (draft: UnitPreference | null) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <SettingsModal visible={Boolean(draft)} title="Change units" onClose={onClose}>
+      {draft ? (
+        <>
+          {unitOptions.map((option) => (
+            <OptionPill
+              key={option.value}
+              label={option.label}
+              selected={draft === option.value}
+              onPress={() => onChangeDraft(option.value)}
+            />
+          ))}
+          <PrimaryButton icon="save-outline" label="Save units" onPress={onSave} />
+        </>
+      ) : null}
+    </SettingsModal>
+  );
+}
+
+function ToneModal({
+  draft,
+  onChangeDraft,
+  onClose,
+  onSave
+}: {
+  draft: MazeCoachTone | null;
+  onChangeDraft: (draft: MazeCoachTone | null) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <SettingsModal visible={Boolean(draft)} title="Change Maze Coach tone" onClose={onClose}>
+      {draft ? (
+        <>
+          {mazeCoachToneOptions.map((option) => (
+            <OptionPill
+              key={option.value}
+              label={option.label}
+              selected={draft === option.value}
+              onPress={() => onChangeDraft(option.value)}
+            />
+          ))}
+          <PrimaryButton icon="save-outline" label="Save tone" onPress={onSave} />
+        </>
+      ) : null}
+    </SettingsModal>
+  );
+}
+
+function RemindersModal({
+  draft,
+  onChangeDraft,
+  onClose,
+  onSave
+}: {
+  draft: LocalReminderSettings | null;
+  onChangeDraft: (draft: LocalReminderSettings | null) => void;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const updateSchedule = (key: ReminderChannelKey, updates: Partial<LocalReminderSettings[ReminderChannelKey]>) => {
+    onChangeDraft(draft ? { ...draft, [key]: { ...draft[key], ...updates } } : draft);
+  };
+
+  const toggleDay = (key: ReminderChannelKey, day: number) => {
+    if (!draft) {
+      return;
+    }
+
+    const currentDays = draft[key].days;
+    const days = currentDays.includes(day)
+      ? currentDays.filter((currentDay) => currentDay !== day)
+      : [...currentDays, day].sort((a, b) => a - b);
+
+    updateSchedule(key, { days });
+  };
+
+  return (
+    <SettingsModal visible={Boolean(draft)} title="Manage reminders" onClose={onClose}>
+      {draft ? (
+        <>
+          <PrimaryButton
+            icon="refresh-outline"
+            label="Recommended defaults"
+            onPress={() => onChangeDraft(cloneReminderSettings(recommendedReminderSettings))}
+            variant="ghost"
+          />
+          {reminderKeys.map((key) => (
+            <Card key={key}>
+              <View style={styles.cardTopRow}>
+                <View style={styles.flex}>
+                  <AppText variant="subheading">{reminderChannelLabels[key]}</AppText>
+                  <AppText muted>{formatDays(draft[key].days)} at {draft[key].time}</AppText>
+                </View>
+                <Switch
+                  ios_backgroundColor={theme.colors.surfaceRaised}
+                  onValueChange={(enabled) => updateSchedule(key, { enabled })}
+                  thumbColor={theme.colors.text}
+                  trackColor={{ false: theme.colors.surfaceRaised, true: theme.colors.accent }}
+                  value={draft[key].enabled}
+                />
+              </View>
+              <SettingsField
+                label="Time"
+                onChangeText={(time) => updateSchedule(key, { time })}
+                placeholder="18:00"
+                value={draft[key].time}
+              />
+              <AppText muted variant="caption">
+                Days
+              </AppText>
+              <View style={styles.optionWrap}>
+                {weekDayOptions.map((day) => (
+                  <OptionPill
+                    key={day.value}
+                    label={day.label}
+                    selected={draft[key].days.includes(day.value)}
+                    onPress={() => toggleDay(key, day.value)}
+                  />
+                ))}
+              </View>
+            </Card>
+          ))}
+          <PrimaryButton icon="save-outline" label="Save reminders" onPress={onSave} />
+        </>
+      ) : null}
+    </SettingsModal>
+  );
+}
+
+function OptionGroup<T extends string>({
+  label,
+  options,
+  selectedValue,
+  onSelect
+}: {
+  label: string;
+  options: Array<{ label: string; value: T }>;
+  selectedValue: T;
+  onSelect: (value: T) => void;
+}) {
+  return (
+    <View style={styles.stack}>
+      <AppText muted variant="caption">
+        {label}
+      </AppText>
+      <View style={styles.optionWrap}>
+        {options.map((option) => (
+          <OptionPill
+            key={option.value}
+            label={option.label}
+            selected={selectedValue === option.value}
+            onPress={() => onSelect(option.value)}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
+function OptionPill({
+  label,
+  selected,
+  onPress
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.optionPill,
+        selected && styles.optionPillSelected,
+        pressed && styles.pressed
+      ]}
+    >
+      <AppText variant="caption">{label}</AppText>
+    </Pressable>
+  );
+}
+
+function createBaseProfile(profile: UserProfile | null): UserProfile {
+  if (profile) {
+    return profile;
+  }
+
+  const now = new Date().toISOString();
+
+  return {
+    id: getLocalProfileId(),
+    name: "Athlete",
+    units: "imperial",
+    fitnessGoal: "build_muscle",
+    experienceLevel: "beginner",
+    trainingLocation: "gym",
+    daysPerWeek: 3,
+    dietaryPreference: "None",
+    activityLevel: "moderate",
+    mazeCoachTone: "motivational_not_corny",
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function createProfileDraft(profile: UserProfile | null): ProfileDraft {
+  const baseProfile = createBaseProfile(profile);
+
+  return {
+    name: baseProfile.name,
+    age: formatOptionalNumber(baseProfile.age),
+    gender: baseProfile.gender ?? "",
+    height: formatOptionalNumber(baseProfile.height),
+    weight: formatOptionalNumber(baseProfile.weight),
+    goalWeight: formatOptionalNumber(baseProfile.goalWeight)
+  };
+}
+
+function createGoalsDraft(profile: UserProfile | null): GoalsDraft {
+  const baseProfile = createBaseProfile(profile);
+
+  return {
+    fitnessGoal: baseProfile.fitnessGoal,
+    experienceLevel: baseProfile.experienceLevel,
+    trainingLocation: baseProfile.trainingLocation,
+    daysPerWeek: baseProfile.daysPerWeek,
+    dietaryPreference: baseProfile.dietaryPreference,
+    activityLevel: baseProfile.activityLevel
+  };
+}
+
+function cloneReminderSettings(settings: LocalReminderSettings): LocalReminderSettings {
+  return {
+    workout: { ...settings.workout, days: [...settings.workout.days] },
+    meal: { ...settings.meal, days: [...settings.meal.days] },
+    progressPhoto: { ...settings.progressPhoto, days: [...settings.progressPhoto.days] }
+  };
+}
+
+function formatProfileSummary(profile: UserProfile | null) {
+  if (!profile) {
+    return "Edit personal info, height, weight, and goal weight.";
+  }
+
+  const height = profile.height ? `${profile.height}` : "--";
+  const weight = profile.weight ? `${profile.weight}` : "--";
+  return `${formatUnits(profile.units)} - height ${height} - weight ${weight}`;
+}
+
+function formatReminderSummary(settings: LocalReminderSettings | null) {
+  if (!settings) {
+    return "Recommended reminder settings available.";
+  }
+
+  const enabledCount = Object.values(settings).filter((schedule) => schedule.enabled).length;
+  return `${enabledCount} reminders on - workouts, meals, and weekly photos.`;
+}
+
+function formatDays(days: number[]) {
+  if (days.length === 7) {
+    return "Every day";
+  }
+
+  return weekDayOptions
+    .filter((day) => days.includes(day.value))
+    .map((day) => day.label)
+    .join(", ");
+}
+
+function parseOptionalNumber(value: string) {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function formatOptionalNumber(value?: number) {
+  return typeof value === "number" ? String(value) : "";
+}
+
 const styles = StyleSheet.create({
+  cardTopRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.md,
+    justifyContent: "space-between"
+  },
+  flex: {
+    flex: 1
+  },
+  formGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm
+  },
   header: {
     alignItems: "center",
     flexDirection: "row",
@@ -101,17 +797,48 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40
   },
-  row: {
+  iconBadge: {
     alignItems: "center",
-    borderBottomColor: theme.colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: theme.spacing.md,
-    justifyContent: "space-between",
-    paddingVertical: theme.spacing.sm
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.accentBorder,
+    borderRadius: theme.radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 38,
+    justifyContent: "center",
+    width: 38
   },
-  rowValue: {
-    flexShrink: 1,
-    textAlign: "right"
+  optionPill: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs
+  },
+  optionPillSelected: {
+    backgroundColor: theme.colors.accentSoft,
+    borderColor: theme.colors.accent
+  },
+  optionWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.xs
+  },
+  placeholderCard: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.md
+  },
+  pressed: {
+    opacity: 0.72
+  },
+  stack: {
+    gap: theme.spacing.md
+  },
+  titleRow: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: theme.spacing.md
   }
 });

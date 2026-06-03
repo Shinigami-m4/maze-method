@@ -4,8 +4,11 @@ import { StatusBar } from "expo-status-bar";
 
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { initializeDatabase } from "./src/database/initializeDatabase";
+import { configureLocalNotifications } from "./src/services/reminderService";
 import { getOnboardingCompleted } from "./src/storage/settingsStorage";
 import { colors } from "./src/theme/colors";
+
+configureLocalNotifications();
 
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
