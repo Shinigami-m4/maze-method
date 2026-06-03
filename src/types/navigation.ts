@@ -1,3 +1,5 @@
+import { FoodLookupProduct, MealCategory } from "./nutrition";
+
 export type BottomTabParamList = {
   Home: undefined;
   Calendar: undefined;
@@ -11,6 +13,11 @@ export type RootStackParamList = {
   MainTabs: undefined;
   SettingsProfile: undefined;
   MazeCoach: undefined;
+  BarcodeScanner: undefined;
+  FoodConfirmation: {
+    food: FoodLookupProduct;
+    initialMealCategory?: MealCategory;
+  };
 };
 
 export type OnboardingStackParamList = {

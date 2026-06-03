@@ -45,3 +45,23 @@ export type DailyMacroInput = {
   carbGrams?: number;
   fatGrams?: number;
 };
+
+export type FoodLookupSource = "open_food_facts" | "manual";
+
+export type FoodLookupProduct = {
+  barcode: string;
+  productName: string;
+  servingSize?: string;
+  calories?: number;
+  proteinGrams?: number;
+  carbGrams?: number;
+  fatGrams?: number;
+  source: FoodLookupSource;
+  found: boolean;
+};
+
+export type RecentScannedFood = FoodLookupProduct & {
+  scannedAt: string;
+  mealCategory?: MealCategory;
+  notes?: string;
+};

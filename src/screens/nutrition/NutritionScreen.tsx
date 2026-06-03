@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { AppText } from "../../components/AppText";
 import { Card } from "../../components/Card";
@@ -17,17 +19,26 @@ import {
   saveDailyMacroTotal,
   saveMeal
 } from "../../database/nutritionRepository";
+import {
+  getRecentScannedFoods,
+  toFoodLookupProduct
+} from "../../services/barcodeService";
 import { theme } from "../../theme/theme";
 import { MealLog } from "../../types/models";
+import { BottomTabParamList, RootStackParamList } from "../../types/navigation";
 import {
   MacroTotals,
   mealCategories,
   MealCategory,
   MealInput,
-  NutritionDay
+  NutritionDay,
+  RecentScannedFood
 } from "../../types/nutrition";
 import { NutritionField } from "./components/NutritionField";
 import { NutritionModal } from "./components/NutritionModal";
+
+type Props = BottomTabScreenProps<BottomTabParamList, "Nutrition">;
+type RootNavigation = NativeStackNavigationProp<RootStackParamList>;
 
 type MealDraft = {
   id?: string;
@@ -54,15 +65,21 @@ const emptyTotals: MacroTotals = {
   fatGrams: 0
 };
 
-export function NutritionScreen() {
+export function NutritionScreen({ navigation }: Props) {
+  const rootNavigation = navigation.getParent<RootNavigation>();
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [nutritionDay, setNutritionDay] = useState<NutritionDay | null>(null);
+  const [recentScannedFoods, setRecentScannedFoods] = useState<RecentScannedFood[]>([]);
   const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
   const [macroDraft, setMacroDraft] = useState<MacroDraft | null>(null);
 
   const loadNutritionDay = useCallback(async () => {
-    const nextDay = await getNutritionDay(selectedDate);
+    const [nextDay, nextRecentScannedFoods] = await Promise.all([
+      getNutritionDay(selectedDate),
+      getRecentScannedFoods()
+    ]);
     setNutritionDay(nextDay);
+    setRecentScannedFoods(nextRecentScannedFoods);
   }, [selectedDate]);
 
   useFocusEffect(
@@ -151,6 +168,17 @@ export function NutritionScreen() {
     ]);
   };
 
+  const handleScanFood = () => {
+    rootNavigation?.navigate("BarcodeScanner");
+  };
+
+  const handleUseRecentFood = (food: RecentScannedFood) => {
+    rootNavigation?.navigate("FoodConfirmation", {
+      food: toFoodLookupProduct(food),
+      initialMealCategory: food.mealCategory
+    });
+  };
+
   return (
     <Screen>
       <View style={styles.headerRow}>
@@ -228,6 +256,7 @@ export function NutritionScreen() {
 
       <View style={styles.actionRow}>
         <PrimaryButton icon="add" label="Meal" onPress={() => setMealDraft(createMealDraft())} />
+        <PrimaryButton icon="barcode-outline" label="Scan Food" onPress={handleScanFood} />
         <PrimaryButton
           icon="calculator-outline"
           label="Daily Total"
@@ -253,6 +282,9 @@ export function NutritionScreen() {
           </View>
         </Card>
       ) : null}
+
+      <SectionHeader title="Recent Scans" />
+      <RecentScansSection foods={recentScannedFoods} onUseFood={handleUseRecentFood} />
 
       <SectionHeader title="Meals" />
       {mealCategories.map((category) => (
@@ -282,11 +314,6 @@ export function NutritionScreen() {
 
       <SectionHeader title="Future Tools" />
       <View style={styles.stack}>
-        <PlaceholderCard
-          icon="barcode-outline"
-          title="Barcode scanner"
-          value="Planned for a later version. Version 1 keeps food logging manual."
-        />
         <PlaceholderCard
           icon="sparkles-outline"
           title="Maze Coach meal recommendations"
@@ -373,7 +400,7 @@ function MealCategorySection({
         <View>
           <AppText variant="subheading">{category}</AppText>
           <AppText muted>
-            {meals.length} meals · {Math.round(totals.calories)} calories
+            {meals.length} meals - {Math.round(totals.calories)} calories
           </AppText>
         </View>
         <PrimaryButton icon="add" label="Add" onPress={onAddMeal} variant="ghost" />
@@ -413,7 +440,7 @@ function MealCard({
         <View style={styles.flex}>
           <AppText variant="subheading">{meal.mealName}</AppText>
           <AppText muted>
-            {formatNumber(meal.calories)} cal · {formatNumber(meal.proteinGrams, "g")} protein
+            {formatNumber(meal.calories)} cal - {formatNumber(meal.proteinGrams, "g")} protein
           </AppText>
         </View>
         <View style={styles.iconRow}>
@@ -422,10 +449,55 @@ function MealCard({
         </View>
       </View>
       <AppText muted style={styles.cardGap}>
-        C {formatNumber(meal.carbGrams, "g")} · F {formatNumber(meal.fatGrams, "g")}
+        C {formatNumber(meal.carbGrams, "g")} - F {formatNumber(meal.fatGrams, "g")}
       </AppText>
       {meal.notes ? <AppText style={styles.cardGap}>{meal.notes}</AppText> : null}
     </Card>
+  );
+}
+
+function RecentScansSection({
+  foods,
+  onUseFood
+}: {
+  foods: RecentScannedFood[];
+  onUseFood: (food: RecentScannedFood) => void;
+}) {
+  if (foods.length === 0) {
+    return (
+      <Card style={styles.recentEmptyCard}>
+        <View style={styles.placeholderCard}>
+          <Ionicons color={theme.colors.accent} name="barcode-outline" size={24} />
+          <View style={styles.flex}>
+            <AppText variant="subheading">No recent scanned foods</AppText>
+            <AppText muted>Scanned foods will appear here after you save them.</AppText>
+          </View>
+        </View>
+      </Card>
+    );
+  }
+
+  return (
+    <View style={styles.stack}>
+      {foods.map((food) => (
+        <Card key={`${food.barcode}-${food.scannedAt}`} style={styles.recentFoodCard}>
+          <View style={styles.cardTopRow}>
+            <View style={styles.flex}>
+              <AppText variant="subheading">{food.productName}</AppText>
+              <AppText muted>
+                {formatNumber(food.calories)} cal - {food.servingSize || food.barcode}
+              </AppText>
+            </View>
+            <PrimaryButton
+              icon="add-circle-outline"
+              label="Use"
+              onPress={() => onUseFood(food)}
+              variant="ghost"
+            />
+          </View>
+        </Card>
+      ))}
+    </View>
   );
 }
 
@@ -792,6 +864,12 @@ const styles = StyleSheet.create({
   },
   progressWrap: {
     marginTop: theme.spacing.md
+  },
+  recentEmptyCard: {
+    marginBottom: theme.spacing.md
+  },
+  recentFoodCard: {
+    backgroundColor: theme.colors.surfaceRaised
   },
   remainingText: {
     color: theme.colors.accent

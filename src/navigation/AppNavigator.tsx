@@ -4,7 +4,9 @@ import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { BarcodeScannerScreen } from "../screens/nutrition/BarcodeScannerScreen";
 import { CalendarScreen } from "../screens/calendar/CalendarScreen";
+import { FoodConfirmationScreen } from "../screens/nutrition/FoodConfirmationScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { MazeCoachScreen } from "../screens/mazeCoach/MazeCoachScreen";
 import { NutritionScreen } from "../screens/nutrition/NutritionScreen";
@@ -69,6 +71,8 @@ export function AppNavigator({
             <RootStack.Screen component={BottomTabs} name="MainTabs" />
             <RootStack.Screen component={SettingsProfileScreen} name="SettingsProfile" />
             <RootStack.Screen component={MazeCoachScreen} name="MazeCoach" />
+            <RootStack.Screen component={BarcodeScannerScreen} name="BarcodeScanner" />
+            <RootStack.Screen component={FoodConfirmationScreen} name="FoodConfirmation" />
           </>
         )}
       </RootStack.Navigator>

@@ -4,5 +4,6 @@ export const storageKeys = {
   unitPreference: "maze_method:unit_preference",
   reminderPreferences: "maze_method:reminder_preferences",
   reminderScheduleSettings: "maze_method:reminder_schedule_settings",
-  mazeCoachTone: "maze_method:maze_coach_tone"
+  mazeCoachTone: "maze_method:maze_coach_tone",
+  recentScannedFoods: "maze_method:recent_scanned_foods"
 } as const;
