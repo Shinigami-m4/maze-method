@@ -17,6 +17,7 @@ import { IconButton } from "../../components/IconButton";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Screen } from "../../components/Screen";
 import { SectionHeader } from "../../components/SectionHeader";
+import { StateCard } from "../../components/StateCard";
 import {
   addExerciseResourceLink,
   deleteExerciseResourceLink,
@@ -95,17 +96,28 @@ export function WorkoutsScreen() {
   const [exerciseNotesDraft, setExerciseNotesDraft] = useState("");
   const [linkDraft, setLinkDraft] = useState({ url: "", label: "", notes: "" });
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async (selectedExerciseId?: string) => {
-    const nextDashboard = await getWorkoutDashboardData();
-    setDashboard(nextDashboard);
+    setIsLoading(true);
+    setErrorMessage(null);
 
-    if (selectedExerciseId) {
-      const updatedExercise = nextDashboard.exercises.find((item) => item.id === selectedExerciseId);
-      if (updatedExercise) {
-        setSelectedExercise(updatedExercise);
-        setExerciseNotesDraft(updatedExercise.customNotes ?? "");
+    try {
+      const nextDashboard = await getWorkoutDashboardData();
+      setDashboard(nextDashboard);
+
+      if (selectedExerciseId) {
+        const updatedExercise = nextDashboard.exercises.find((item) => item.id === selectedExerciseId);
+        if (updatedExercise) {
+          setSelectedExercise(updatedExercise);
+          setExerciseNotesDraft(updatedExercise.customNotes ?? "");
+        }
       }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Workout data could not load.");
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -292,6 +304,25 @@ export function WorkoutsScreen() {
         </View>
         <PrimaryButton icon="add" label="Routine" onPress={() => openRoutineEditor()} />
       </View>
+
+      {isLoading ? (
+        <StateCard
+          body="Loading local routines, exercise library, recent workouts, and personal records."
+          isLoading
+          title="Loading workouts"
+          variant="loading"
+        />
+      ) : null}
+
+      {errorMessage ? (
+        <StateCard
+          actionLabel="Retry"
+          body={errorMessage}
+          onAction={() => void loadDashboard()}
+          title="Workout data unavailable"
+          variant="error"
+        />
+      ) : null}
 
       <SectionHeader title="My Routines" />
       {dashboard.routines.length === 0 ? (

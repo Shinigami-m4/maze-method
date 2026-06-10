@@ -2,14 +2,17 @@
   "expo": {
     "name": "Maze Method",
     "slug": "maze-method",
-    "version": "2.5.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "scheme": "maze-method",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.yourname.mazemethod",
-      "buildNumber": "2"
+      "buildNumber": "3",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow Maze Method to save selected progress photos to your private local progress timeline."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,7 +34,8 @@
     "extra": {
       "release": {
         "bundleIdentifierNote": "Replace com.yourname.mazemethod with your final Apple Developer bundle identifier before running EAS Build.",
-        "iconStatus": "Final app icon is not configured yet. Add a production icon asset before App Store review."
+        "iconStatus": "Final app icon is not configured yet. Add a production icon asset before App Store review.",
+        "supportEmail": "support@mazemethod.app"
       }
     },
     "experiments": {

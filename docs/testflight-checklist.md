@@ -1,12 +1,12 @@
 # Maze Method TestFlight Checklist
 
-Version 2D release readiness checklist for iOS TestFlight testing.
+Version 3 release readiness checklist for iOS TestFlight testing.
 
 ## Release Config
 
 - App name: Maze Method
-- Current Expo app version: `2.5.0`
-- Current iOS build number: `2`
+- Current Expo app version: `3.0.0`
+- Current iOS build number: `3`
 - Bundle identifier placeholder: `com.yourname.mazemethod`
 - Replace the placeholder bundle identifier before running EAS Build if you want this build connected to your real Apple Developer account.
 - Final app icon is not configured yet. Add a production icon asset before App Store review.

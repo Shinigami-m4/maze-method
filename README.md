@@ -18,8 +18,9 @@ The app uses a premium dark fitness-technology style: matte black surfaces, clea
 - Maze Coach recommendation engine with local mock fallback, optional secure backend/OpenAI integration, daily targets, suggested workout, suggested meals, recovery advice, and explanation.
 - Social challenges and leaderboards with lifting, cardio, nutrition, and consistency metrics built on Supabase Auth and synced logs.
 - Local reminders for workouts, meal logging, and weekly progress photos.
-- Settings/Profile screen for editing profile, goals, units, Maze Coach tone, reminders, and future placeholders.
+- Settings/Profile screen for editing profile, goals, units, Maze Coach tone, reminders, legal/support links, and data request placeholders.
 - Optional Supabase authentication and cloud sync foundation with sign in, sign up, first backup, manual sync, and cloud status in Settings/Profile.
+- Version 3 App Store readiness polish with release checklists, app review notes, loading/error/permission states, safety copy, and privacy-first monitoring placeholders.
 
 ## Tech Stack
 
@@ -61,6 +62,8 @@ backend/
 ```
 
 The code is organized around feature areas. SQLite repositories keep database reads/writes out of screen components, while shared service files hold business logic such as nutrition targets, barcode lookup, optional Supabase auth, cloud sync, Maze Coach recommendations, and notification scheduling.
+
+Version 3 keeps app launch local-first. SQLite initialization and onboarding status load before navigation, but cloud sync is started only from signed-in Settings/Profile actions so the app remains usable offline and does not block launch on network work.
 
 ## Screens
 
@@ -169,6 +172,8 @@ PORT=8787
 
 The Supabase schema plan lives in `docs/supabase-schema.md`.
 
+Maze Coach includes persistent safety copy in the app: it provides general fitness and nutrition guidance, it is not medical advice, and users should consult a qualified professional before making major health changes.
+
 ## Local-First Cloud Sync
 
 SQLite remains the source of truth while sync is stabilizing. Signed-in users can back up local data to Supabase from Settings/Profile. The first time a user signs in, Maze Method asks whether to back up existing local data. The app pushes local rows first, then pulls remote rows, and never deletes local data automatically during first sync.
@@ -207,6 +212,21 @@ Anti-cheat is intentionally simple for this version: metrics are clearly defined
 The Nutrition tab includes a `Scan Food` flow built with Expo Camera. The scanner requests camera permission before opening, pauses after the first detected barcode to avoid duplicate submissions, looks up product data through Open Food Facts, and sends the result to an editable confirmation screen.
 
 Confirmed foods save through the existing local SQLite meal log, so scanned foods and manual meals appear together in the Nutrition tab. If Open Food Facts does not find a product, Maze Method opens the same confirmation flow with the barcode already filled in so the user can enter values manually. Recent scanned foods are stored in AsyncStorage for quick reuse.
+
+## Version 3 Release Readiness
+
+Version 3 adds public App Store release preparation without removing local-first fallback behavior:
+
+- App Store release checklist: `docs/app-store-release-checklist.md`
+- App review notes and demo account guidance: `docs/app-review-notes.md`
+- Existing TestFlight preparation docs: `docs/testflight-checklist.md`, `docs/privacy-policy-draft.md`, and `docs/tester-feedback-form.md`
+- Reusable empty/loading/error/offline/permission state component
+- Retry states for app boot and heavy local-data screens
+- Photo library permission state and lighter progress photo import quality
+- Settings/Profile placeholders for Privacy Policy, Terms of Use, Support/Contact, Export data, and Delete account request
+- Analytics/monitoring placeholder that logs only generic development events and intentionally avoids collecting personal fitness, nutrition, photo, or health data
+
+Before public release, replace the placeholder iOS bundle identifier, support email, privacy URL, terms URL, and app icon.
 
 ## Setup Instructions
 
@@ -269,15 +289,17 @@ Export an iOS bundle sanity check:
 npx expo export --platform ios --output-dir .expo-export-check
 ```
 
-## TestFlight Readiness
+## TestFlight And App Store Readiness
 
-Version 2D adds release-readiness documentation and an in-app Support screen placeholder. Start with:
+Release-readiness documentation and an in-app Support screen placeholder are included. Start with:
 
 - `docs/testflight-checklist.md`
 - `docs/privacy-policy-draft.md`
 - `docs/tester-feedback-form.md`
+- `docs/app-store-release-checklist.md`
+- `docs/app-review-notes.md`
 
-Before running EAS Build, replace the placeholder iOS bundle identifier in `app.json`, confirm the support email, and add a final app icon.
+Before running EAS Build, replace the placeholder iOS bundle identifier in `app.json`, confirm the support email, add live legal URLs, and add a final app icon.
 
 ## Screenshots
 
@@ -302,13 +324,14 @@ Maze Method is built to be easy to explain in an internship interview:
 - It includes a clear future AI path without exposing API keys in the mobile app.
 - It uses simple, explainable algorithms for nutrition targets, progress summaries, personal records, and Maze Coach recommendations.
 - It demonstrates cloud-ready social features with challenge scoring, leaderboard rows, and RLS-ready schema notes.
+- It shows release-minded engineering with clear App Store docs, state handling, safe AI architecture, and privacy-conscious monitoring placeholders.
 - It keeps the UI consistent through reusable components and theme constants.
 
 ## Future Improvements
 
-- Supabase backend
-- User authentication
-- Cloud sync
+- Production Supabase hardening
+- Account deletion endpoint
+- Data export implementation
 - Production deployment for backend-powered Maze Coach
 - Friend search and challenge invites
 - Challenge proof uploads and moderation

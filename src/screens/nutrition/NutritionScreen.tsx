@@ -12,6 +12,7 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { ProgressBar } from "../../components/ProgressBar";
 import { Screen } from "../../components/Screen";
 import { SectionHeader } from "../../components/SectionHeader";
+import { StateCard } from "../../components/StateCard";
 import {
   deleteDailyMacroTotal,
   deleteMeal,
@@ -72,14 +73,25 @@ export function NutritionScreen({ navigation }: Props) {
   const [recentScannedFoods, setRecentScannedFoods] = useState<RecentScannedFood[]>([]);
   const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
   const [macroDraft, setMacroDraft] = useState<MacroDraft | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadNutritionDay = useCallback(async () => {
-    const [nextDay, nextRecentScannedFoods] = await Promise.all([
-      getNutritionDay(selectedDate),
-      getRecentScannedFoods()
-    ]);
-    setNutritionDay(nextDay);
-    setRecentScannedFoods(nextRecentScannedFoods);
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const [nextDay, nextRecentScannedFoods] = await Promise.all([
+        getNutritionDay(selectedDate),
+        getRecentScannedFoods()
+      ]);
+      setNutritionDay(nextDay);
+      setRecentScannedFoods(nextRecentScannedFoods);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Nutrition data could not load.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [selectedDate]);
 
   useFocusEffect(
@@ -203,6 +215,25 @@ export function NutritionScreen({ navigation }: Props) {
           />
         </View>
       </View>
+
+      {isLoading ? (
+        <StateCard
+          body="Loading local meals, macros, targets, and recent scanned foods."
+          isLoading
+          title="Loading nutrition"
+          variant="loading"
+        />
+      ) : null}
+
+      {errorMessage ? (
+        <StateCard
+          actionLabel="Retry"
+          body={errorMessage}
+          onAction={() => void loadNutritionDay()}
+          title="Nutrition unavailable"
+          variant="error"
+        />
+      ) : null}
 
       <Card accent style={styles.heroCard}>
         <View style={styles.cardTopRow}>

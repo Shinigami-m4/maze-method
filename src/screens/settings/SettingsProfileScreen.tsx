@@ -10,8 +10,10 @@ import { IconButton } from "../../components/IconButton";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Screen } from "../../components/Screen";
 import { SectionHeader } from "../../components/SectionHeader";
+import { StateCard } from "../../components/StateCard";
 import { getLocalProfileId, getUserProfile, saveUserProfile } from "../../database/profileRepository";
 import { useAuthSession } from "../../services/authSessionContext";
+import { trackAppEvent } from "../../services/monitoringService";
 import { syncLocalReminderNotifications } from "../../services/reminderService";
 import {
   CloudSyncState,
@@ -77,6 +79,8 @@ type GoalsDraft = {
 
 const reminderKeys: ReminderChannelKey[] = ["workout", "meal", "progressPhoto"];
 const daysPerWeekOptions = [1, 2, 3, 4, 5, 6, 7];
+const privacyPolicyUrl = "https://mazemethod.app/privacy";
+const termsOfUseUrl = "https://mazemethod.app/terms";
 
 export function SettingsProfileScreen({ navigation }: Props) {
   const authSession = useAuthSession();
@@ -245,6 +249,32 @@ export function SettingsProfileScreen({ navigation }: Props) {
     [authSession.status]
   );
 
+  const handleOpenReleaseLinkPlaceholder = (title: string, url: string) => {
+    trackAppEvent("release_placeholder_selected", { area: title });
+    Alert.alert(
+      title,
+      `Public release needs a live hosted link here. Placeholder URL: ${url}`
+    );
+  };
+
+  const handleExportDataPlaceholder = () => {
+    trackAppEvent("release_placeholder_selected", { area: "Export data" });
+    Alert.alert(
+      "Export data placeholder",
+      "Add a JSON or CSV export flow before launch if your privacy policy promises portable local data exports."
+    );
+  };
+
+  const handleDeleteAccountRequestPlaceholder = () => {
+    trackAppEvent("release_placeholder_selected", { area: "Delete account request" });
+    Alert.alert(
+      "Delete account request",
+      authSession.status === "signed_in"
+        ? "For public release, connect this to a backend deletion request or a monitored support workflow. Local data stays on this phone unless the user removes the app."
+        : "Local mode has no cloud account. Add a local data reset/export workflow before public release if your privacy policy requires it."
+    );
+  };
+
   useEffect(() => {
     if (
       authSession.status !== "signed_in" ||
@@ -303,6 +333,14 @@ export function SettingsProfileScreen({ navigation }: Props) {
         isSyncing={isSyncing}
         status={authSession.status}
       />
+      {authSession.status !== "signed_in" ? (
+        <StateCard
+          body="Workouts, nutrition, progress, photos, and Maze Coach fallback still work without a network connection or cloud account."
+          icon="phone-portrait-outline"
+          title="Offline-ready local mode"
+          variant="offline"
+        />
+      ) : null}
 
       <SectionHeader title="Edit profile" />
       <SettingsActionCard
@@ -356,21 +394,48 @@ export function SettingsProfileScreen({ navigation }: Props) {
         value="Dark theme is active for version 1. Light mode can be added later."
       />
 
-      <SectionHeader title="Data management placeholder" />
-      <PlaceholderCard
-        icon="server-outline"
-        title="Data management placeholder"
-        value="Data is local-first in SQLite and AsyncStorage. Export, reset, and cloud sync can be added later."
-      />
+      <SectionHeader title="Legal and support" />
+      <View style={styles.stack}>
+        <SettingsActionCard
+          icon="shield-checkmark-outline"
+          title="Privacy Policy"
+          value="Placeholder public privacy link for App Store release."
+          actionLabel="View"
+          onPress={() => handleOpenReleaseLinkPlaceholder("Privacy Policy", privacyPolicyUrl)}
+        />
+        <SettingsActionCard
+          icon="document-text-outline"
+          title="Terms of Use"
+          value="Placeholder public terms link for App Store release."
+          actionLabel="View"
+          onPress={() => handleOpenReleaseLinkPlaceholder("Terms of Use", termsOfUseUrl)}
+        />
+        <SettingsActionCard
+          icon="help-circle-outline"
+          title="Support/Contact"
+          value="Email support@mazemethod.app for release and TestFlight issues."
+          actionLabel="Open support"
+          onPress={() => navigation.navigate("Support")}
+        />
+      </View>
 
-      <SectionHeader title="Support" />
-      <SettingsActionCard
-        icon="help-circle-outline"
-        title="Support"
-        value="Email support@mazemethod.app for TestFlight issues. Placeholder address for release setup."
-        actionLabel="Open support"
-        onPress={() => navigation.navigate("Support")}
-      />
+      <SectionHeader title="Data requests" />
+      <View style={styles.stack}>
+        <SettingsActionCard
+          icon="download-outline"
+          title="Export data"
+          value="Placeholder for future local JSON or CSV export."
+          actionLabel="Details"
+          onPress={handleExportDataPlaceholder}
+        />
+        <SettingsActionCard
+          icon="trash-outline"
+          title="Delete account request"
+          value="Placeholder for signed-in account deletion and local data guidance."
+          actionLabel="Details"
+          onPress={handleDeleteAccountRequestPlaceholder}
+        />
+      </View>
 
       <ProfileModal
         draft={profileDraft}

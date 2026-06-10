@@ -11,6 +11,7 @@ import { IconButton } from "../../components/IconButton";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Screen } from "../../components/Screen";
 import { SectionHeader } from "../../components/SectionHeader";
+import { StateCard } from "../../components/StateCard";
 import {
   deleteProgressPhoto,
   getProgressDashboard,
@@ -90,14 +91,26 @@ export function ProgressScreen() {
   const [photoDraft, setPhotoDraft] = useState<PhotoDraft | null>(null);
   const [comparisonDraft, setComparisonDraft] = useState<ComparisonDraft | null>(null);
   const [recordDraft, setRecordDraft] = useState<PersonalRecordDraft | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [photoPermissionDenied, setPhotoPermissionDenied] = useState(false);
 
   const loadProgress = useCallback(async () => {
-    const [nextDashboard, storedUnits] = await Promise.all([
-      getProgressDashboard(selectedRange),
-      getUnitPreference()
-    ]);
-    setDashboard(nextDashboard);
-    setUnitPreference(storedUnits);
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const [nextDashboard, storedUnits] = await Promise.all([
+        getProgressDashboard(selectedRange),
+        getUnitPreference()
+      ]);
+      setDashboard(nextDashboard);
+      setUnitPreference(storedUnits);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Progress data could not load.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [selectedRange]);
 
   useFocusEffect(
@@ -176,14 +189,16 @@ export function ProgressScreen() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert("Photo access needed", "Allow photo library access to add progress photos.");
+      setPhotoPermissionDenied(true);
       return;
     }
 
+    setPhotoPermissionDenied(false);
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: false,
+      allowsEditing: true,
       mediaTypes: ["images"],
-      quality: 0.9
+      quality: 0.75
     });
 
     if (result.canceled || !result.assets[0]) {
@@ -221,7 +236,18 @@ export function ProgressScreen() {
     await loadProgress();
   };
 
-  const handleDeletePhoto = (photo: ProgressPhoto) => {
+  const deletePhotoAndRefresh = useCallback(async (photo: ProgressPhoto) => {
+    await deleteProgressPhoto(photo.id);
+
+    // The app keeps progress photos local by copying picked images into Expo document storage.
+    if (FileSystem.documentDirectory && photo.localUri.startsWith(FileSystem.documentDirectory)) {
+      await FileSystem.deleteAsync(photo.localUri, { idempotent: true }).catch(() => undefined);
+    }
+
+    await loadProgress();
+  }, [loadProgress]);
+
+  const handleDeletePhoto = useCallback((photo: ProgressPhoto) => {
     Alert.alert("Delete progress photo?", "This removes the photo entry from this phone.", [
       { text: "Cancel", style: "cancel" },
       {
@@ -232,18 +258,7 @@ export function ProgressScreen() {
         }
       }
     ]);
-  };
-
-  const deletePhotoAndRefresh = async (photo: ProgressPhoto) => {
-    await deleteProgressPhoto(photo.id);
-
-    // The app keeps progress photos local by copying picked images into Expo document storage.
-    if (FileSystem.documentDirectory && photo.localUri.startsWith(FileSystem.documentDirectory)) {
-      await FileSystem.deleteAsync(photo.localUri, { idempotent: true }).catch(() => undefined);
-    }
-
-    await loadProgress();
-  };
+  }, [deletePhotoAndRefresh]);
 
   const handleSavePersonalRecord = async () => {
     if (!recordDraft) {
@@ -286,6 +301,25 @@ export function ProgressScreen() {
           </AppText>
         </View>
       </View>
+
+      {isLoading ? (
+        <StateCard
+          body="Loading local charts, progress photos, measurements, and personal records."
+          isLoading
+          title="Loading progress"
+          variant="loading"
+        />
+      ) : null}
+
+      {errorMessage ? (
+        <StateCard
+          actionLabel="Retry"
+          body={errorMessage}
+          onAction={() => void loadProgress()}
+          title="Progress data unavailable"
+          variant="error"
+        />
+      ) : null}
 
       <Card accent style={styles.heroCard}>
         <View style={styles.metricGrid}>
@@ -400,6 +434,16 @@ export function ProgressScreen() {
 
       <SectionHeader eyebrow="Photos" title="Progress Photos" />
       <PhotoReminderCard status={dashboard?.photoReminder} />
+      {photoPermissionDenied ? (
+        <StateCard
+          actionLabel="Try Again"
+          body="Photo library access is off. Allow photo access in iOS Settings to add local progress photos."
+          icon="images-outline"
+          onAction={() => void handlePickPhoto()}
+          title="Photo permission needed"
+          variant="permission"
+        />
+      ) : null}
       <View style={styles.actionRow}>
         <PrimaryButton
           icon="images-outline"
@@ -565,7 +609,7 @@ function PhotoReminderCard({ status }: { status?: ProgressDashboardData["photoRe
   );
 }
 
-function PhotoGrid({
+const PhotoGrid = React.memo(function PhotoGrid({
   photos,
   onDelete
 }: {
@@ -588,7 +632,7 @@ function PhotoGrid({
     <View style={styles.photoGrid}>
       {photos.map((photo) => (
         <View key={photo.id} style={styles.photoCard}>
-          <Image source={{ uri: photo.localUri }} style={styles.photoThumb} />
+          <Image resizeMode="cover" source={{ uri: photo.localUri }} style={styles.photoThumb} />
           <View style={styles.photoMeta}>
             <View style={styles.flex}>
               <AppText numberOfLines={1} variant="caption">
@@ -609,7 +653,7 @@ function PhotoGrid({
       ))}
     </View>
   );
-}
+});
 
 function RecentCardioList({ sessions }: { sessions: CardioLogEntry[] }) {
   const recentSessions = sessions.slice(-3).reverse();

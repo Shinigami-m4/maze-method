@@ -174,14 +174,12 @@ export function MazeCoachScreen({ navigation }: Props) {
         </View>
       </Card>
 
-      {recommendation?.safetyNote ? (
-        <Card style={styles.recommendationCard}>
-          <AppText muted variant="caption">
-            Safety note
-          </AppText>
-          <AppText style={styles.explanationText}>{recommendation.safetyNote}</AppText>
-        </Card>
-      ) : null}
+      <Card style={styles.recommendationCard}>
+        <AppText muted variant="caption">
+          Safety note
+        </AppText>
+        <AppText style={styles.explanationText}>{getSafetyNote(recommendation)}</AppText>
+      </Card>
     </Screen>
   );
 }
@@ -243,6 +241,12 @@ function getSourceLabel(recommendation: MazeCoachRecommendation | null) {
   }
 
   return "Local mock recommendation.";
+}
+
+function getSafetyNote(recommendation: MazeCoachRecommendation | null) {
+  const backendNote = recommendation?.safetyNote ? `${recommendation.safetyNote} ` : "";
+
+  return `${backendNote}Maze Coach provides general fitness and nutrition guidance. Maze Coach is not medical advice. Consult a qualified professional before making major health changes.`;
 }
 
 const styles = StyleSheet.create({
