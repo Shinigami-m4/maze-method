@@ -4,14 +4,12 @@ import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import { BarcodeScannerScreen } from "../screens/nutrition/BarcodeScannerScreen";
 import { CalendarScreen } from "../screens/calendar/CalendarScreen";
 import { ChallengeDetailScreen } from "../screens/challenges/ChallengeDetailScreen";
 import { ChallengeLeaderboardScreen } from "../screens/challenges/ChallengeLeaderboardScreen";
 import { ChallengesHomeScreen } from "../screens/challenges/ChallengesHomeScreen";
 import { CreateChallengeScreen } from "../screens/challenges/CreateChallengeScreen";
 import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen";
-import { FoodConfirmationScreen } from "../screens/nutrition/FoodConfirmationScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { MazeCoachScreen } from "../screens/mazeCoach/MazeCoachScreen";
 import { MyChallengeHistoryScreen } from "../screens/challenges/MyChallengeHistoryScreen";
@@ -86,8 +84,6 @@ export function AppNavigator({
             <RootStack.Screen component={ChallengeLeaderboardScreen} name="ChallengeLeaderboard" />
             <RootStack.Screen component={MyChallengeHistoryScreen} name="MyChallengeHistory" />
             <RootStack.Screen component={MazeCoachScreen} name="MazeCoach" />
-            <RootStack.Screen component={BarcodeScannerScreen} name="BarcodeScanner" />
-            <RootStack.Screen component={FoodConfirmationScreen} name="FoodConfirmation" />
             <RootStack.Screen component={SignInScreen} name="SignIn" />
             <RootStack.Screen component={SignUpScreen} name="SignUp" />
             <RootStack.Screen component={ForgotPasswordScreen} name="ForgotPassword" />

@@ -21,15 +21,7 @@
     },
     "plugins": [
       "expo-sqlite",
-      "expo-asset",
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow Maze Method to use your camera to scan food barcodes.",
-          "microphonePermission": false,
-          "recordAudioAndroid": false
-        }
-      ]
+      "expo-asset"
     ],
     "extra": {
       "release": {

@@ -4,7 +4,7 @@ These notes are for App Store review preparation. Replace placeholders before su
 
 ## Demo And Test Account Instructions
 
-Maze Method can be reviewed without an account because the core app is local-first. Onboarding, workouts, calendar logging, nutrition, progress tracking, progress photos, barcode scanning, local reminders, Settings/Profile, and local Maze Coach fallback should all work in local mode.
+Maze Method can be reviewed without an account because the core app is local-first. Onboarding, workouts, calendar logging, nutrition, progress tracking, progress photos, local reminders, Settings/Profile, and local Maze Coach fallback should all work in local mode.
 
 If the review build includes Supabase cloud features, provide a demo account in App Store Connect:
 
@@ -21,7 +21,6 @@ Do not include sensitive medical information in the demo account. Use simple sam
 - Log a workout from Calendar.
 - Add manual cardio and daily notes.
 - Add manual meals and daily macro totals.
-- Scan a food barcode or deny camera permission to confirm the permission state.
 - Add body weight, a body measurement, and a progress photo, or deny photo permission to confirm the permission state.
 - Open Maze Coach and confirm recommendations use local fallback if the backend is unavailable.
 - Open Settings/Profile and confirm account, sync status, legal/support placeholders, reminders, and data request placeholders.

@@ -70,7 +70,7 @@ export function SupportScreen({ navigation }: Props) {
       <SectionHeader title="Tester notes" />
       <Card style={styles.stack}>
         <Bullet text="Include your iPhone model, iOS version, app build number, and what you were doing before the issue." />
-        <Bullet text="Screenshots or screen recordings help confirm layout, navigation, barcode, photo, and sync bugs." />
+        <Bullet text="Screenshots or screen recordings help confirm layout, navigation, photo, and sync bugs." />
         <Bullet text="Maze Coach provides general fitness and nutrition guidance only. It is not medical advice." />
         <Bullet text="Test data may be reset during TestFlight builds. Do not enter sensitive medical information." />
       </Card>

@@ -21,7 +21,6 @@ Choose the primary area:
 - Calendar
 - Workouts
 - Nutrition
-- Barcode scanner
 - Progress
 - Progress photos
 - Maze Coach
@@ -43,7 +42,7 @@ Choose the primary area:
 ## Attachments To Send
 
 - Screenshot of the issue.
-- Screen recording if the issue involves navigation, forms, scanner, camera, or sync.
+- Screen recording if the issue involves navigation, forms, photos, or sync.
 - Any visible error message.
 - Approximate time the bug happened.
 - Whether the app was freshly installed or updated from an older TestFlight build.

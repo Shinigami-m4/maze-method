@@ -229,7 +229,6 @@ create table public.meal_logs (
   protein_grams numeric,
   carb_grams numeric,
   fat_grams numeric,
-  barcode text,
   serving_size text,
   notes text,
   created_at timestamptz not null default now(),

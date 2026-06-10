@@ -5,6 +5,5 @@ export const storageKeys = {
   reminderPreferences: "maze_method:reminder_preferences",
   reminderScheduleSettings: "maze_method:reminder_schedule_settings",
   mazeCoachTone: "maze_method:maze_coach_tone",
-  recentScannedFoods: "maze_method:recent_scanned_foods",
   cloudSyncState: "maze_method:cloud_sync_state"
 } as const;

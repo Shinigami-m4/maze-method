@@ -39,7 +39,6 @@ Maze Method version 3 is prepared for public App Store release planning. Replace
 - Explain local-first SQLite and AsyncStorage usage.
 - Explain optional Supabase Auth and cloud sync.
 - Explain progress photos can remain local and private to the device.
-- Explain camera access is used for barcode scanning.
 - Explain photo library access is used for user-selected progress photos.
 - Explain Maze Coach provides general fitness and nutrition guidance, not medical advice.
 - Explain what data is collected by any future analytics provider before enabling analytics.
@@ -84,4 +83,4 @@ Use a clean git working tree before production builds so the submitted build can
 - Test a fresh install with no local data.
 - Test local mode with no Supabase environment variables.
 - Test signed-in mode with Supabase environment variables.
-- Test camera denied, photo permission denied, backend unavailable, and offline sync failure paths.
+- Test photo permission denied, backend unavailable, and offline sync failure paths.

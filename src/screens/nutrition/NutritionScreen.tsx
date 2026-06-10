@@ -3,7 +3,6 @@ import { Alert, Pressable, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { AppText } from "../../components/AppText";
 import { Card } from "../../components/Card";
@@ -20,26 +19,20 @@ import {
   saveDailyMacroTotal,
   saveMeal
 } from "../../database/nutritionRepository";
-import {
-  getRecentScannedFoods,
-  toFoodLookupProduct
-} from "../../services/barcodeService";
 import { theme } from "../../theme/theme";
 import { MealLog } from "../../types/models";
-import { BottomTabParamList, RootStackParamList } from "../../types/navigation";
+import { BottomTabParamList } from "../../types/navigation";
 import {
   MacroTotals,
   mealCategories,
   MealCategory,
   MealInput,
-  NutritionDay,
-  RecentScannedFood
+  NutritionDay
 } from "../../types/nutrition";
 import { NutritionField } from "./components/NutritionField";
 import { NutritionModal } from "./components/NutritionModal";
 
 type Props = BottomTabScreenProps<BottomTabParamList, "Nutrition">;
-type RootNavigation = NativeStackNavigationProp<RootStackParamList>;
 
 type MealDraft = {
   id?: string;
@@ -67,10 +60,8 @@ const emptyTotals: MacroTotals = {
 };
 
 export function NutritionScreen({ navigation }: Props) {
-  const rootNavigation = navigation.getParent<RootNavigation>();
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
   const [nutritionDay, setNutritionDay] = useState<NutritionDay | null>(null);
-  const [recentScannedFoods, setRecentScannedFoods] = useState<RecentScannedFood[]>([]);
   const [mealDraft, setMealDraft] = useState<MealDraft | null>(null);
   const [macroDraft, setMacroDraft] = useState<MacroDraft | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,12 +72,8 @@ export function NutritionScreen({ navigation }: Props) {
     setErrorMessage(null);
 
     try {
-      const [nextDay, nextRecentScannedFoods] = await Promise.all([
-        getNutritionDay(selectedDate),
-        getRecentScannedFoods()
-      ]);
+      const nextDay = await getNutritionDay(selectedDate);
       setNutritionDay(nextDay);
-      setRecentScannedFoods(nextRecentScannedFoods);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Nutrition data could not load.");
     } finally {
@@ -180,17 +167,6 @@ export function NutritionScreen({ navigation }: Props) {
     ]);
   };
 
-  const handleScanFood = () => {
-    rootNavigation?.navigate("BarcodeScanner");
-  };
-
-  const handleUseRecentFood = (food: RecentScannedFood) => {
-    rootNavigation?.navigate("FoodConfirmation", {
-      food: toFoodLookupProduct(food),
-      initialMealCategory: food.mealCategory
-    });
-  };
-
   return (
     <Screen>
       <View style={styles.headerRow}>
@@ -218,7 +194,7 @@ export function NutritionScreen({ navigation }: Props) {
 
       {isLoading ? (
         <StateCard
-          body="Loading local meals, macros, targets, and recent scanned foods."
+          body="Loading local meals, macros, and targets."
           isLoading
           title="Loading nutrition"
           variant="loading"
@@ -287,7 +263,6 @@ export function NutritionScreen({ navigation }: Props) {
 
       <View style={styles.actionRow}>
         <PrimaryButton icon="add" label="Meal" onPress={() => setMealDraft(createMealDraft())} />
-        <PrimaryButton icon="barcode-outline" label="Scan Food" onPress={handleScanFood} />
         <PrimaryButton
           icon="calculator-outline"
           label="Daily Total"
@@ -313,9 +288,6 @@ export function NutritionScreen({ navigation }: Props) {
           </View>
         </Card>
       ) : null}
-
-      <SectionHeader title="Recent Scans" />
-      <RecentScansSection foods={recentScannedFoods} onUseFood={handleUseRecentFood} />
 
       <SectionHeader title="Meals" />
       {mealCategories.map((category) => (
@@ -484,51 +456,6 @@ function MealCard({
       </AppText>
       {meal.notes ? <AppText style={styles.cardGap}>{meal.notes}</AppText> : null}
     </Card>
-  );
-}
-
-function RecentScansSection({
-  foods,
-  onUseFood
-}: {
-  foods: RecentScannedFood[];
-  onUseFood: (food: RecentScannedFood) => void;
-}) {
-  if (foods.length === 0) {
-    return (
-      <Card style={styles.recentEmptyCard}>
-        <View style={styles.placeholderCard}>
-          <Ionicons color={theme.colors.accent} name="barcode-outline" size={24} />
-          <View style={styles.flex}>
-            <AppText variant="subheading">No recent scanned foods</AppText>
-            <AppText muted>Scanned foods will appear here after you save them.</AppText>
-          </View>
-        </View>
-      </Card>
-    );
-  }
-
-  return (
-    <View style={styles.stack}>
-      {foods.map((food) => (
-        <Card key={`${food.barcode}-${food.scannedAt}`} style={styles.recentFoodCard}>
-          <View style={styles.cardTopRow}>
-            <View style={styles.flex}>
-              <AppText variant="subheading">{food.productName}</AppText>
-              <AppText muted>
-                {formatNumber(food.calories)} cal - {food.servingSize || food.barcode}
-              </AppText>
-            </View>
-            <PrimaryButton
-              icon="add-circle-outline"
-              label="Use"
-              onPress={() => onUseFood(food)}
-              variant="ghost"
-            />
-          </View>
-        </Card>
-      ))}
-    </View>
   );
 }
 
@@ -895,12 +822,6 @@ const styles = StyleSheet.create({
   },
   progressWrap: {
     marginTop: theme.spacing.md
-  },
-  recentEmptyCard: {
-    marginBottom: theme.spacing.md
-  },
-  recentFoodCard: {
-    backgroundColor: theme.colors.surfaceRaised
   },
   remainingText: {
     color: theme.colors.accent

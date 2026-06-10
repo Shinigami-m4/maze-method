@@ -79,7 +79,7 @@ eas submit --platform ios --profile production
 - Open the TestFlight invite link from your email or Messages.
 - Install Maze Method from TestFlight.
 - Complete onboarding with test data.
-- Test Home, Calendar, Workouts, Nutrition, Progress, Maze Coach, Settings/Profile, barcode scanning, reminders, and support.
+- Test Home, Calendar, Workouts, Nutrition, Progress, Maze Coach, Settings/Profile, reminders, and support.
 - Report bugs with steps to reproduce, screenshots, iPhone model, iOS version, and app build number.
 
 ## Safety And Privacy Notes For Testers
@@ -95,7 +95,6 @@ eas submit --platform ios --profile production
 - Launch the app fresh and complete onboarding.
 - Create a workout routine and log it on Calendar.
 - Add a meal manually.
-- Scan a barcode if camera permission is available.
 - Add body weight, a measurement, and a progress photo.
 - Open Maze Coach and confirm a recommendation appears.
 - Open Settings/Profile, confirm support opens, and check cloud auth still works locally when not signed in.

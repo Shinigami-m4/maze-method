@@ -14,7 +14,7 @@ Maze Method is local-first. The app may store the following data on the device:
 
 - Profile information such as name, age, gender, height, weight, goal weight, units, activity level, and fitness goals.
 - Workout routines, exercise notes, resource links, workout logs, and personal records.
-- Meal logs, daily calories, protein, carbs, fats, and barcode scan history.
+- Meal logs, daily calories, protein, carbs, and fats.
 - Body weight, measurements, cardio sessions, daily notes, and progress photo metadata.
 - Local image URIs for progress photos.
 - Reminder preferences, unit preferences, onboarding status, and Maze Coach tone.
@@ -26,10 +26,6 @@ Maze Method includes optional Supabase authentication and cloud sync foundations
 
 Progress photos may be uploaded to Supabase Storage only when cloud sync is configured and the user chooses to sync.
 
-## Barcode Lookup
-
-Barcode scanning uses the camera to scan food barcodes. Product lookup may use Open Food Facts. Barcode values may be sent to that lookup service when scanning food.
-
 ## Maze Coach
 
 Maze Coach provides general fitness and nutrition suggestions. It is not medical advice.
@@ -38,9 +34,9 @@ The local Maze Coach mock engine runs on the device. If the optional backend URL
 
 Do not enter sensitive medical information into Maze Method or Maze Coach.
 
-## Camera And Photos
+## Photos
 
-Maze Method requests camera permission for barcode scanning. Progress photos are selected by the user and stored locally unless optional cloud sync is configured.
+Progress photos are selected by the user and stored locally unless optional cloud sync is configured.
 
 ## Notifications
 

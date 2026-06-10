@@ -13,7 +13,7 @@ The app uses a premium dark fitness-technology style: matte black surfaces, clea
 - Home dashboard with Maze Coach Card, Today's Path, quick actions, macro placeholder, progress photo reminder, and direction quote.
 - Workout system with routine creation, exercise library, custom exercises, personal notes, resource links, routine duplication, active/inactive routines, and local workout history.
 - Calendar logging with monthly indicators, daily detail view, saved routine logging, editable logged exercises, cardio logging, and daily notes.
-- Nutrition logging with daily totals, meal categories, calorie/protein/carb/fat tracking, macro progress bars, target calculations, barcode scanning, and editable food confirmation.
+- Nutrition logging with daily totals, meal categories, calorie/protein/carb/fat tracking, macro progress bars, and target calculations.
 - Progress tab with weight chart, macro chart, strength volume chart, cardio history, measurements, progress photo upload, photo comparison, and personal records.
 - Maze Coach recommendation engine with local mock fallback, optional secure backend/OpenAI integration, daily targets, suggested workout, suggested meals, recovery advice, and explanation.
 - Social challenges and leaderboards with lifting, cardio, nutrition, and consistency metrics built on Supabase Auth and synced logs.
@@ -33,7 +33,6 @@ The app uses a premium dark fitness-technology style: matte black surfaces, clea
 - Expo Notifications
 - Expo Image Picker
 - Expo File System
-- Expo Camera
 - Supabase JavaScript client
 - Optional Node TypeScript backend
 - OpenAI Responses API through the backend only
@@ -61,7 +60,7 @@ backend/
   src/types/           Backend request/response types
 ```
 
-The code is organized around feature areas. SQLite repositories keep database reads/writes out of screen components, while shared service files hold business logic such as nutrition targets, barcode lookup, optional Supabase auth, cloud sync, Maze Coach recommendations, and notification scheduling.
+The code is organized around feature areas. SQLite repositories keep database reads/writes out of screen components, while shared service files hold business logic such as nutrition targets, optional Supabase auth, cloud sync, Maze Coach recommendations, and notification scheduling.
 
 Version 3 keeps app launch local-first. SQLite initialization and onboarding status load before navigation, but cloud sync is started only from signed-in Settings/Profile actions so the app remains usable offline and does not block launch on network work.
 
@@ -70,7 +69,7 @@ Version 3 keeps app launch local-first. SQLite initialization and onboarding sta
 - **Home:** calm dashboard with Maze Coach Card, Today's Path, quick actions, summary cards, and progress photo reminder.
 - **Calendar:** monthly grid with indicators for workouts, meals, macros, cardio, weight, photos, and notes.
 - **Workouts:** routine builder, exercise library, custom exercises, resource links, recent workouts, and personal records.
-- **Nutrition:** meals, daily macro totals, target calculations, barcode scanning, recent scanned foods, and future Maze Coach meal placeholders.
+- **Nutrition:** meals, daily macro totals, target calculations, and future Maze Coach meal placeholders.
 - **Progress:** charts, body measurements, progress photos, comparison view, cardio history, and records.
 - **Maze Coach:** recommendation screen with targets, workout, meals, recovery, explanation, insights, backend loading state, fallback state, and retry.
 - **Challenges:** Home card plus full stack for challenge discovery, details, creation, leaderboard, and history.
@@ -102,7 +101,6 @@ AsyncStorage is used for simple settings:
 - Maze Coach tone preference
 - reminder preferences
 - detailed local reminder schedules
-- recent scanned foods for quick reuse
 
 The app does not seed fake user data. Built-in exercises are static reference data, but user logs start empty until the user creates entries.
 
@@ -206,12 +204,6 @@ Supported metrics:
 Challenge actions require Supabase Auth and challenge tables. Users can join, leave, create private challenges, view leaderboards, see their rank, and view completed/left history. Leaderboard scores recalculate from local SQLite logs when refreshed, then upsert to Supabase with `lastUpdated`, so edited logs update challenge scores on the next refresh.
 
 Anti-cheat is intentionally simple for this version: metrics are clearly defined, leaderboard rows show last updated, and future proof systems can add Apple Health, GPS, and uploads.
-
-## Barcode Nutrition Logging
-
-The Nutrition tab includes a `Scan Food` flow built with Expo Camera. The scanner requests camera permission before opening, pauses after the first detected barcode to avoid duplicate submissions, looks up product data through Open Food Facts, and sends the result to an editable confirmation screen.
-
-Confirmed foods save through the existing local SQLite meal log, so scanned foods and manual meals appear together in the Nutrition tab. If Open Food Facts does not find a product, Maze Method opens the same confirmation flow with the barcode already filled in so the user can enter values manually. Recent scanned foods are stored in AsyncStorage for quick reuse.
 
 ## Version 3 Release Readiness
 
@@ -335,7 +327,6 @@ Maze Method is built to be easy to explain in an internship interview:
 - Production deployment for backend-powered Maze Coach
 - Friend search and challenge invites
 - Challenge proof uploads and moderation
-- Expanded barcode database support
 - GPS cardio tracking
 - Apple Health challenge verification
 - Light mode

@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { AppText } from "../../components/AppText";
 import { Card } from "../../components/Card";
+import { MazeMethodLogo } from "../../components/brand/MazeMethodLogo";
 import { IconButton } from "../../components/IconButton";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Screen } from "../../components/Screen";
@@ -53,9 +54,12 @@ export function HomeScreen({ navigation }: Props) {
     <Screen>
       <View style={styles.header}>
         <View>
-          <AppText muted variant="caption">
-            Every Rep Has Direction
-          </AppText>
+          <View style={styles.brandRow}>
+            <MazeMethodLogo markOnly size={34} />
+            <AppText muted variant="caption">
+              Every Rep Has Direction
+            </AppText>
+          </View>
           <AppText style={styles.greeting} variant="title">
             {profile?.name ? `Hi, ${profile.name}` : "Hi, Athlete"}
           </AppText>
@@ -201,6 +205,11 @@ const styles = StyleSheet.create({
   cardHeadline: {
     marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.md
+  },
+  brandRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.sm
   },
   cardText: {
     marginTop: theme.spacing.sm

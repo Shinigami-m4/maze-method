@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
 import { AppNavigator } from "./src/navigation/AppNavigator";
+import { MazeSplashAnimation } from "./src/components/brand/MazeSplashAnimation";
 import { initializeDatabase } from "./src/database/initializeDatabase";
 import { AuthSessionProvider } from "./src/services/authSessionContext";
 import { StateCard } from "./src/components/StateCard";
@@ -18,10 +19,17 @@ import { colors } from "./src/theme/colors";
 configureLocalNotifications();
 initializeMonitoring();
 
+// Flip this to true while iterating on app screens if you need to skip the
+// premium opening animation in development builds.
+const SKIP_OPENING_ANIMATION_IN_DEV = false;
+
 export default function App() {
   const [isBooting, setIsBooting] = useState(true);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
   const [bootError, setBootError] = useState<string | null>(null);
+  const [isSplashComplete, setIsSplashComplete] = useState<boolean>(
+    __DEV__ && SKIP_OPENING_ANIMATION_IN_DEV
+  );
 
   const bootApp = useCallback(async () => {
     setIsBooting(true);
@@ -48,27 +56,42 @@ export default function App() {
     void bootApp();
   }, [bootApp]);
 
+  if (!isSplashComplete) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <MazeSplashAnimation onFinish={() => setIsSplashComplete(true)} />
+      </>
+    );
+  }
+
   if (isBooting) {
     return (
-      <View style={styles.bootScreen}>
-        <ActivityIndicator color={colors.accent} size="large" />
-      </View>
+      <>
+        <StatusBar style="light" />
+        <View style={styles.bootScreen}>
+          <ActivityIndicator color={colors.accent} size="large" />
+        </View>
+      </>
     );
   }
 
   if (bootError) {
     return (
-      <View style={styles.bootScreen}>
-        <StateCard
-          actionLabel="Retry"
-          body={bootError}
-          icon="alert-circle-outline"
-          onAction={() => void bootApp()}
-          style={styles.bootErrorCard}
-          title="Maze Method could not start"
-          variant="error"
-        />
-      </View>
+      <>
+        <StatusBar style="light" />
+        <View style={styles.bootScreen}>
+          <StateCard
+            actionLabel="Retry"
+            body={bootError}
+            icon="alert-circle-outline"
+            onAction={() => void bootApp()}
+            style={styles.bootErrorCard}
+            title="Maze Method could not start"
+            variant="error"
+          />
+        </View>
+      </>
     );
   }
 
