@@ -6,10 +6,15 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { BarcodeScannerScreen } from "../screens/nutrition/BarcodeScannerScreen";
 import { CalendarScreen } from "../screens/calendar/CalendarScreen";
+import { ChallengeDetailScreen } from "../screens/challenges/ChallengeDetailScreen";
+import { ChallengeLeaderboardScreen } from "../screens/challenges/ChallengeLeaderboardScreen";
+import { ChallengesHomeScreen } from "../screens/challenges/ChallengesHomeScreen";
+import { CreateChallengeScreen } from "../screens/challenges/CreateChallengeScreen";
 import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen";
 import { FoodConfirmationScreen } from "../screens/nutrition/FoodConfirmationScreen";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { MazeCoachScreen } from "../screens/mazeCoach/MazeCoachScreen";
+import { MyChallengeHistoryScreen } from "../screens/challenges/MyChallengeHistoryScreen";
 import { NutritionScreen } from "../screens/nutrition/NutritionScreen";
 import { OnboardingNavigator } from "./OnboardingNavigator";
 import { ProgressScreen } from "../screens/progress/ProgressScreen";
@@ -75,6 +80,11 @@ export function AppNavigator({
             <RootStack.Screen component={BottomTabs} name="MainTabs" />
             <RootStack.Screen component={SettingsProfileScreen} name="SettingsProfile" />
             <RootStack.Screen component={SupportScreen} name="Support" />
+            <RootStack.Screen component={ChallengesHomeScreen} name="ChallengesHome" />
+            <RootStack.Screen component={ChallengeDetailScreen} name="ChallengeDetail" />
+            <RootStack.Screen component={CreateChallengeScreen} name="CreateChallenge" />
+            <RootStack.Screen component={ChallengeLeaderboardScreen} name="ChallengeLeaderboard" />
+            <RootStack.Screen component={MyChallengeHistoryScreen} name="MyChallengeHistory" />
             <RootStack.Screen component={MazeCoachScreen} name="MazeCoach" />
             <RootStack.Screen component={BarcodeScannerScreen} name="BarcodeScanner" />
             <RootStack.Screen component={FoodConfirmationScreen} name="FoodConfirmation" />

@@ -16,6 +16,7 @@ The app uses a premium dark fitness-technology style: matte black surfaces, clea
 - Nutrition logging with daily totals, meal categories, calorie/protein/carb/fat tracking, macro progress bars, target calculations, barcode scanning, and editable food confirmation.
 - Progress tab with weight chart, macro chart, strength volume chart, cardio history, measurements, progress photo upload, photo comparison, and personal records.
 - Maze Coach recommendation engine with local mock fallback, optional secure backend/OpenAI integration, daily targets, suggested workout, suggested meals, recovery advice, and explanation.
+- Social challenges and leaderboards with lifting, cardio, nutrition, and consistency metrics built on Supabase Auth and synced logs.
 - Local reminders for workouts, meal logging, and weekly progress photos.
 - Settings/Profile screen for editing profile, goals, units, Maze Coach tone, reminders, and future placeholders.
 - Optional Supabase authentication and cloud sync foundation with sign in, sign up, first backup, manual sync, and cloud status in Settings/Profile.
@@ -69,6 +70,7 @@ The code is organized around feature areas. SQLite repositories keep database re
 - **Nutrition:** meals, daily macro totals, target calculations, barcode scanning, recent scanned foods, and future Maze Coach meal placeholders.
 - **Progress:** charts, body measurements, progress photos, comparison view, cardio history, and records.
 - **Maze Coach:** recommendation screen with targets, workout, meals, recovery, explanation, insights, backend loading state, fallback state, and retry.
+- **Challenges:** Home card plus full stack for challenge discovery, details, creation, leaderboard, and history.
 - **Settings/Profile:** profile editing, goal editing, unit changes, Maze Coach tone, reminders, and future settings placeholders.
 - **Auth:** optional cloud sign in, sign up, forgot password placeholder, and account status views.
 
@@ -175,6 +177,31 @@ Sync metadata is stored locally on each record: local ID, remote ID, Supabase us
 
 Progress photos upload to a Supabase Storage bucket named `progress-photos`. Maze Method stores the remote storage path while keeping the local URI when available, so offline use remains possible. Failed sync or photo uploads are shown in Settings/Profile and do not block local logging.
 
+## Social Challenges And Leaderboards
+
+Version 2.5 adds a Challenges entry card on Home instead of adding another bottom tab. The full Challenges stack includes discovery, challenge detail, create challenge, leaderboard, and history screens.
+
+Supported categories:
+
+- Lifting
+- Cardio
+- Nutrition
+- Consistency
+
+Supported metrics:
+
+- `total_volume`: completed sets x reps x weight
+- `max_weight`: highest completed logged exercise weight
+- `workout_count`: count of workout logs
+- `cardio_minutes`: sum of manual cardio minutes
+- `cardio_distance`: sum of manual cardio distance
+- `protein_goal_days`: days where logged protein meets the local target
+- `streak_days`: longest streak with workout, cardio, meal, or macro logging
+
+Challenge actions require Supabase Auth and challenge tables. Users can join, leave, create private challenges, view leaderboards, see their rank, and view completed/left history. Leaderboard scores recalculate from local SQLite logs when refreshed, then upsert to Supabase with `lastUpdated`, so edited logs update challenge scores on the next refresh.
+
+Anti-cheat is intentionally simple for this version: metrics are clearly defined, leaderboard rows show last updated, and future proof systems can add Apple Health, GPS, and uploads.
+
 ## Barcode Nutrition Logging
 
 The Nutrition tab includes a `Scan Food` flow built with Expo Camera. The scanner requests camera permission before opening, pauses after the first detected barcode to avoid duplicate submissions, looks up product data through Open Food Facts, and sends the result to an editable confirmation screen.
@@ -257,6 +284,7 @@ Before running EAS Build, replace the placeholder iOS bundle identifier in `app.
 Add screenshots here when the app is captured from Expo Go or an iOS simulator.
 
 - Home screen: _placeholder_
+- Challenges screen: _placeholder_
 - Calendar screen: _placeholder_
 - Workouts screen: _placeholder_
 - Nutrition screen: _placeholder_
@@ -273,6 +301,7 @@ Maze Method is built to be easy to explain in an internship interview:
 - It shows local-first product thinking with privacy-safe progress photos and no backend dependency.
 - It includes a clear future AI path without exposing API keys in the mobile app.
 - It uses simple, explainable algorithms for nutrition targets, progress summaries, personal records, and Maze Coach recommendations.
+- It demonstrates cloud-ready social features with challenge scoring, leaderboard rows, and RLS-ready schema notes.
 - It keeps the UI consistent through reusable components and theme constants.
 
 ## Future Improvements
@@ -281,8 +310,11 @@ Maze Method is built to be easy to explain in an internship interview:
 - User authentication
 - Cloud sync
 - Production deployment for backend-powered Maze Coach
+- Friend search and challenge invites
+- Challenge proof uploads and moderation
 - Expanded barcode database support
 - GPS cardio tracking
+- Apple Health challenge verification
 - Light mode
 - Demo mode
 - Apple Health integration

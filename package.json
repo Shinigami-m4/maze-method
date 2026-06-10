@@ -1,6 +1,6 @@
 {
   "name": "maze-method",
-  "version": "2.0.0",
+  "version": "2.5.0",
   "private": true,
   "main": "expo/AppEntry",
   "scripts": {

@@ -2,14 +2,14 @@
   "expo": {
     "name": "Maze Method",
     "slug": "maze-method",
-    "version": "2.0.0",
+    "version": "2.5.0",
     "orientation": "portrait",
     "scheme": "maze-method",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.yourname.mazemethod",
-      "buildNumber": "1"
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {

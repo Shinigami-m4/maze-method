@@ -99,6 +99,25 @@ export function HomeScreen({ navigation }: Props) {
         </AppText>
       </Card>
 
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => rootNavigation?.navigate("ChallengesHome")}
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <Card style={styles.pathCard}>
+          <View style={styles.cardTopRow}>
+            <AppText variant="caption">Challenges</AppText>
+            <Ionicons color={theme.colors.accent} name="trophy-outline" size={18} />
+          </View>
+          <AppText style={styles.cardHeadline} variant="heading">
+            Compete on synced workouts, cardio, nutrition, and streaks.
+          </AppText>
+          <AppText muted>
+            Join public challenges or create private tests with friends.
+          </AppText>
+        </Card>
+      </Pressable>
+
       <SectionHeader title="Today" />
       <View style={styles.summaryGrid}>
         <Card style={styles.summaryCard}>

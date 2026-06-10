@@ -408,6 +408,128 @@ create table public.maze_coach_history (
 );
 ```
 
+### challenges
+
+Social challenges are cloud-only for Version 2.5. Local SQLite remains the source of truth for workout, cardio, nutrition, and streak logs; leaderboard entries are recalculated from synced/local logs when users refresh a challenge leaderboard.
+
+```sql
+create table public.challenges (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  category text not null check (category in ('lifting', 'cardio', 'nutrition', 'consistency')),
+  metric text not null check (
+    metric in (
+      'total_volume',
+      'max_weight',
+      'workout_count',
+      'cardio_minutes',
+      'cardio_distance',
+      'protein_goal_days',
+      'streak_days'
+    )
+  ),
+  visibility text not null check (visibility in ('public', 'friends_only', 'invite_only')),
+  creator_user_id uuid not null references auth.users(id) on delete cascade,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  status text not null default 'active' check (status in ('upcoming', 'active', 'completed')),
+  participant_count integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+create index challenges_visibility_idx on public.challenges (visibility);
+create index challenges_creator_user_id_idx on public.challenges (creator_user_id);
+create index challenges_status_idx on public.challenges (status);
+```
+
+RLS notes:
+
+- Public challenges can be selected by signed-in users.
+- Invite-only and friends-only challenges should be selectable by the creator and accepted participants.
+- Inserts should require `creator_user_id = auth.uid()`.
+- Updates/deletes should be limited to the creator for now.
+
+### challenge_participants
+
+```sql
+create table public.challenge_participants (
+  id uuid primary key default gen_random_uuid(),
+  challenge_id uuid not null references public.challenges(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  display_name text,
+  status text not null default 'joined' check (status in ('joined', 'left', 'completed')),
+  joined_at timestamptz not null default now(),
+  left_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (challenge_id, user_id)
+);
+
+create index challenge_participants_user_id_idx on public.challenge_participants (user_id);
+create index challenge_participants_challenge_id_idx on public.challenge_participants (challenge_id);
+```
+
+RLS notes:
+
+- Users can select participant rows for public challenges and challenges they belong to.
+- Users can insert/update their own participant row where `user_id = auth.uid()`.
+- Challenge creators may need broader select access for invite management later.
+
+### challenge_entries
+
+Leaderboard rows store recalculated scores and `last_updated`. Edited logs update scores when the user opens/refreshes a leaderboard because the app recalculates from local SQLite and upserts this row.
+
+```sql
+create table public.challenge_entries (
+  id uuid primary key default gen_random_uuid(),
+  challenge_id uuid not null references public.challenges(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  display_name text not null,
+  metric text not null,
+  score numeric not null default 0,
+  evidence_summary text,
+  last_updated timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (challenge_id, user_id)
+);
+
+create index challenge_entries_challenge_score_idx
+on public.challenge_entries (challenge_id, score desc);
+```
+
+Metric definitions for Version 2.5:
+
+- `total_volume`: completed logged workout exercise sets x reps x weight.
+- `max_weight`: highest completed logged exercise weight.
+- `workout_count`: count of logged workouts.
+- `cardio_minutes`: sum of manually logged cardio minutes.
+- `cardio_distance`: sum of manually logged cardio distance.
+- `protein_goal_days`: days where logged protein meets the local target calculation.
+- `streak_days`: longest streak of days with a workout, cardio, meal, or macro log.
+
+Anti-cheat remains simple: metric definitions are visible, rows show `last_updated`, and future improvements can add Apple Health, GPS verification, and proof uploads.
+
+### friend_invites placeholder
+
+```sql
+create table public.friend_invites (
+  id uuid primary key default gen_random_uuid(),
+  sender_user_id uuid not null references auth.users(id) on delete cascade,
+  recipient_email text,
+  recipient_user_id uuid references auth.users(id) on delete cascade,
+  challenge_id uuid references public.challenges(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'expired')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+This table is a placeholder for later friend search, invite delivery, and friends-only visibility. Version 2.5 only exposes an invite placeholder in the UI.
+
 ## Sync Notes
 
 - Local SQLite remains the source of truth until sync is implemented.

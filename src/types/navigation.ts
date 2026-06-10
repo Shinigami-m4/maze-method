@@ -13,6 +13,11 @@ export type RootStackParamList = {
   MainTabs: undefined;
   SettingsProfile: undefined;
   Support: undefined;
+  ChallengesHome: undefined;
+  ChallengeDetail: { challengeId: string };
+  CreateChallenge: undefined;
+  ChallengeLeaderboard: { challengeId: string };
+  MyChallengeHistory: undefined;
   MazeCoach: undefined;
   BarcodeScanner: undefined;
   FoodConfirmation: {
