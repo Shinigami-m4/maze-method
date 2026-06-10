@@ -15,10 +15,10 @@ The app uses a premium dark fitness-technology style: matte black surfaces, clea
 - Calendar logging with monthly indicators, daily detail view, saved routine logging, editable logged exercises, cardio logging, and daily notes.
 - Nutrition logging with daily totals, meal categories, calorie/protein/carb/fat tracking, macro progress bars, target calculations, barcode scanning, and editable food confirmation.
 - Progress tab with weight chart, macro chart, strength volume chart, cardio history, measurements, progress photo upload, photo comparison, and personal records.
-- Maze Coach local mock recommendation engine with daily calorie and macro targets, suggested workout, suggested meals, recovery advice, and explanation.
+- Maze Coach recommendation engine with local mock fallback, optional secure backend/OpenAI integration, daily targets, suggested workout, suggested meals, recovery advice, and explanation.
 - Local reminders for workouts, meal logging, and weekly progress photos.
 - Settings/Profile screen for editing profile, goals, units, Maze Coach tone, reminders, and future placeholders.
-- Optional Supabase authentication foundation with sign in, sign up, forgot password placeholder, and cloud status in Settings/Profile.
+- Optional Supabase authentication and cloud sync foundation with sign in, sign up, first backup, manual sync, and cloud status in Settings/Profile.
 
 ## Tech Stack
 
@@ -33,6 +33,8 @@ The app uses a premium dark fitness-technology style: matte black surfaces, clea
 - Expo File System
 - Expo Camera
 - Supabase JavaScript client
+- Optional Node TypeScript backend
+- OpenAI Responses API through the backend only
 - Ionicons via `@expo/vector-icons`
 
 ## App Architecture
@@ -49,9 +51,15 @@ src/
   theme/               Color, spacing, radius, and typography constants
   types/               Shared TypeScript models and feature-specific types
   utils/               Small shared helpers
+
+backend/
+  src/index.ts         Lightweight local API server
+  src/routes/          HTTP route handlers
+  src/services/        Server-side OpenAI integration
+  src/types/           Backend request/response types
 ```
 
-The code is organized around feature areas. SQLite repositories keep database reads/writes out of screen components, while shared service files hold business logic such as nutrition targets, barcode lookup, optional Supabase auth, Maze Coach recommendations, and notification scheduling.
+The code is organized around feature areas. SQLite repositories keep database reads/writes out of screen components, while shared service files hold business logic such as nutrition targets, barcode lookup, optional Supabase auth, cloud sync, Maze Coach recommendations, and notification scheduling.
 
 ## Screens
 
@@ -60,7 +68,7 @@ The code is organized around feature areas. SQLite repositories keep database re
 - **Workouts:** routine builder, exercise library, custom exercises, resource links, recent workouts, and personal records.
 - **Nutrition:** meals, daily macro totals, target calculations, barcode scanning, recent scanned foods, and future Maze Coach meal placeholders.
 - **Progress:** charts, body measurements, progress photos, comparison view, cardio history, and records.
-- **Maze Coach:** local recommendation screen with targets, workout, meals, recovery, explanation, and insights.
+- **Maze Coach:** recommendation screen with targets, workout, meals, recovery, explanation, insights, backend loading state, fallback state, and retry.
 - **Settings/Profile:** profile editing, goal editing, unit changes, Maze Coach tone, reminders, and future settings placeholders.
 - **Auth:** optional cloud sign in, sign up, forgot password placeholder, and account status views.
 
@@ -93,11 +101,11 @@ AsyncStorage is used for simple settings:
 
 The app does not seed fake user data. Built-in exercises are static reference data, but user logs start empty until the user creates entries.
 
-Cloud auth is optional. If Supabase environment variables are not configured, Maze Method stays usable in local mode with SQLite and AsyncStorage.
+Cloud auth and sync are optional. If Supabase environment variables are not configured, Maze Method stays usable in local mode with SQLite and AsyncStorage.
 
 ## Maze Coach
 
-Maze Coach is a local mock recommendation engine for version 1. It does not call OpenAI directly and does not include any API key in the mobile app.
+Maze Coach remains local-first. The mobile app has a local mock recommendation engine and can optionally call a secure backend for OpenAI-powered recommendations. It never calls OpenAI directly and never includes an OpenAI API key.
 
 The local service reads:
 
@@ -108,7 +116,7 @@ The local service reads:
 - recent nutrition logs
 - Maze Coach tone preference
 
-It recommends:
+The local and backend-powered paths recommend:
 
 - daily calories
 - daily protein
@@ -119,20 +127,53 @@ It recommends:
 - recovery/rest day advice
 - explanation of why the recommendation was generated
 
-Future OpenAI integration should happen through a backend, such as a Supabase Edge Function, so secrets remain server-side.
+When `EXPO_PUBLIC_MAZE_COACH_API_URL` is configured, the Expo app sends profile/log summaries to `POST /api/maze-coach/recommendation`. The backend reads `OPENAI_API_KEY` from its own environment and calls the OpenAI Responses API with a structured JSON schema. If the backend or AI request fails, the app falls back to the local mock engine and stays usable offline.
+
+Successful full-screen Maze Coach recommendations are saved locally in SQLite `maze_coach_history` for future history and sync work.
 
 ## Supabase Auth Foundation
 
-Version 2A adds an optional Supabase auth layer for future cloud sync. The mobile app reads only public Expo environment variables:
+Version 2A adds an optional Supabase auth layer. Version 2B adds a safe first cloud sync foundation. The mobile app reads only public Expo environment variables:
 
 ```bash
 EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+EXPO_PUBLIC_MAZE_COACH_API_URL=http://localhost:8787
 ```
 
-Do not put Supabase service role keys, database passwords, or OpenAI API keys in the mobile app. Future sync and OpenAI-powered Maze Coach work should go through a backend or Supabase Edge Function.
+Do not put Supabase service role keys, database passwords, or OpenAI API keys in the mobile app. Maze Coach AI requests should go through `backend/` or a hosted equivalent such as a Supabase Edge Function.
+
+## Secure AI Backend
+
+Version 2C adds a lightweight backend foundation:
+
+- `POST /api/maze-coach/recommendation`
+- Server-side `OPENAI_API_KEY`
+- structured JSON response for calories, macros, workout, meals, recovery, explanation, and safety note
+- conservative fallback response when OpenAI is unavailable
+- validation that tolerates incomplete profile/log data
+- rate limiting placeholder comments where production controls should be added
+
+Backend environment variables live in `backend/.env` and are documented in `backend/.env.example`:
+
+```bash
+OPENAI_API_KEY=sk-your-openai-api-key
+OPENAI_MODEL=gpt-4.1-mini
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-backend-only-service-role-key-if-needed-later
+CORS_ORIGIN=*
+PORT=8787
+```
 
 The Supabase schema plan lives in `docs/supabase-schema.md`.
+
+## Local-First Cloud Sync
+
+SQLite remains the source of truth while sync is stabilizing. Signed-in users can back up local data to Supabase from Settings/Profile. The first time a user signs in, Maze Method asks whether to back up existing local data. The app pushes local rows first, then pulls remote rows, and never deletes local data automatically during first sync.
+
+Sync metadata is stored locally on each record: local ID, remote ID, Supabase user ID, sync status, created/updated timestamps, and optional deletion timestamp. Simple conflict handling uses `updated_at`: newer unpushed local records are kept, while newer remote records can be pulled down after backup.
+
+Progress photos upload to a Supabase Storage bucket named `progress-photos`. Maze Method stores the remote storage path while keeping the local URI when available, so offline use remains possible. Failed sync or photo uploads are shown in Settings/Profile and do not block local logging.
 
 ## Barcode Nutrition Logging
 
@@ -150,6 +191,16 @@ npm install
 
 To test optional cloud auth, copy `.env.example` to `.env` and fill in your Supabase project URL and public anon key. Leave `.env` uncommitted.
 
+To test the optional Maze Coach backend, install backend dev dependencies and create `backend/.env` from `backend/.env.example`:
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+Keep `OPENAI_API_KEY` only in `backend/.env`. The Expo app should only receive `EXPO_PUBLIC_MAZE_COACH_API_URL`.
+
 If Expo reports dependency mismatch warnings, run:
 
 ```bash
@@ -162,6 +213,13 @@ Start the Expo development server:
 
 ```bash
 npm start
+```
+
+Start the optional backend in a second terminal when testing OpenAI-powered Maze Coach:
+
+```bash
+cd backend
+npm run dev
 ```
 
 If your phone cannot connect over LAN, use:
@@ -212,7 +270,7 @@ Maze Method is built to be easy to explain in an internship interview:
 - Supabase backend
 - User authentication
 - Cloud sync
-- OpenAI-powered Maze Coach through backend
+- Production deployment for backend-powered Maze Coach
 - Expanded barcode database support
 - GPS cardio tracking
 - Light mode

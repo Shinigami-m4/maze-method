@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -7,6 +7,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { AppText } from "../../components/AppText";
 import { Card } from "../../components/Card";
 import { IconButton } from "../../components/IconButton";
+import { PrimaryButton } from "../../components/PrimaryButton";
 import { Screen } from "../../components/Screen";
 import { SectionHeader } from "../../components/SectionHeader";
 import { getUserProfile } from "../../database/profileRepository";
@@ -24,24 +25,33 @@ type Props = NativeStackScreenProps<RootStackParamList, "MazeCoach">;
 export function MazeCoachScreen({ navigation }: Props) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [recommendation, setRecommendation] = useState<MazeCoachRecommendation | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const loadRecommendation = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const [storedProfile, nextRecommendation] = await Promise.all([
+        getUserProfile(),
+        getMazeCoachRecommendation()
+      ]);
+
+      setProfile(storedProfile);
+      setRecommendation(nextRecommendation);
+      setErrorMessage(nextRecommendation.errorMessage ?? null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Maze Coach could not load.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-
-      void Promise.all([getUserProfile(), getMazeCoachRecommendation()]).then(
-        ([storedProfile, nextRecommendation]) => {
-          if (isActive) {
-            setProfile(storedProfile);
-            setRecommendation(nextRecommendation);
-          }
-        }
-      );
-
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      void loadRecommendation();
+    }, [loadRecommendation])
   );
 
   return (
@@ -71,7 +81,32 @@ export function MazeCoachScreen({ navigation }: Props) {
             ? `${formatFitnessGoal(profile.fitnessGoal)} plan - ${recommendation?.toneLabel ?? "Motivational but not corny"} tone.`
             : "Local recommendations sharpen after profile data is saved."}
         </AppText>
+        <View style={styles.statusRow}>
+          {isLoading ? <ActivityIndicator color={theme.colors.accent} size="small" /> : null}
+          <AppText muted variant="caption">
+            {isLoading ? "Generating Maze Coach insights." : getSourceLabel(recommendation)}
+          </AppText>
+        </View>
       </Card>
+
+      {errorMessage ? (
+        <Card style={styles.errorCard}>
+          <View style={styles.cardTopRow}>
+            <Ionicons color={theme.colors.accent} name="alert-circle-outline" size={20} />
+            <AppText variant="subheading">Backend fallback active</AppText>
+          </View>
+          <AppText muted style={styles.recommendationText}>
+            {errorMessage}
+          </AppText>
+          <PrimaryButton
+            icon="refresh-outline"
+            label="Retry"
+            onPress={loadRecommendation}
+            style={styles.retryButton}
+            variant="ghost"
+          />
+        </Card>
+      ) : null}
 
       <SectionHeader title="Daily Targets" />
       <Card>
@@ -138,6 +173,15 @@ export function MazeCoachScreen({ navigation }: Props) {
           ))}
         </View>
       </Card>
+
+      {recommendation?.safetyNote ? (
+        <Card style={styles.recommendationCard}>
+          <AppText muted variant="caption">
+            Safety note
+          </AppText>
+          <AppText style={styles.explanationText}>{recommendation.safetyNote}</AppText>
+        </Card>
+      ) : null}
     </Screen>
   );
 }
@@ -181,6 +225,26 @@ function formatNumber(value?: number, suffix = "") {
   return typeof value === "number" ? `${Math.round(value)}${suffix}` : "--";
 }
 
+function getSourceLabel(recommendation: MazeCoachRecommendation | null) {
+  if (!recommendation) {
+    return "Maze Coach is ready.";
+  }
+
+  if (recommendation.source === "backend") {
+    return "Secure backend recommendation.";
+  }
+
+  if (recommendation.source === "backend_fallback") {
+    return "Backend fallback recommendation.";
+  }
+
+  if (recommendation.source === "local_fallback") {
+    return "Local fallback recommendation.";
+  }
+
+  return "Local mock recommendation.";
+}
+
 const styles = StyleSheet.create({
   bulletRow: {
     alignItems: "flex-start",
@@ -201,6 +265,10 @@ const styles = StyleSheet.create({
     height: 7,
     marginTop: 8,
     width: 7
+  },
+  errorCard: {
+    borderColor: theme.colors.accentBorder,
+    marginBottom: theme.spacing.md
   },
   explanationText: {
     marginTop: theme.spacing.sm
@@ -253,5 +321,14 @@ const styles = StyleSheet.create({
   },
   recommendationText: {
     marginTop: theme.spacing.sm
+  },
+  retryButton: {
+    marginTop: theme.spacing.md
+  },
+  statusRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md
   }
 });

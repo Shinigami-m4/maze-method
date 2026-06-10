@@ -62,6 +62,7 @@ async function runCloudSyncMigrations() {
     "progress_photos",
     "calendar_entries",
     "daily_notes",
+    "maze_coach_history",
     "personal_records"
   ];
 
@@ -71,6 +72,7 @@ async function runCloudSyncMigrations() {
     await addColumnIfMissing(tableName, "local_id", "TEXT");
     await addColumnIfMissing(tableName, "remote_id", "TEXT");
     await addColumnIfMissing(tableName, "user_id", "TEXT");
+    await addColumnIfMissing(tableName, "sync_status", "TEXT NOT NULL DEFAULT 'pending'");
     await addColumnIfMissing(tableName, "created_at", "TEXT");
     await addColumnIfMissing(tableName, "updated_at", "TEXT");
     await addColumnIfMissing(tableName, "deleted_at", "TEXT");
@@ -80,8 +82,9 @@ async function runCloudSyncMigrations() {
        SET
          local_id = COALESCE(local_id, id),
          created_at = COALESCE(created_at, datetime('now')),
-         updated_at = COALESCE(updated_at, created_at, datetime('now'))
-       WHERE local_id IS NULL OR created_at IS NULL OR updated_at IS NULL;`
+         updated_at = COALESCE(updated_at, created_at, datetime('now')),
+         sync_status = COALESCE(sync_status, 'pending')
+       WHERE local_id IS NULL OR created_at IS NULL OR updated_at IS NULL OR sync_status IS NULL;`
     );
 
     await database.execAsync(
@@ -93,7 +96,27 @@ async function runCloudSyncMigrations() {
          SET
            local_id = COALESCE(local_id, NEW.id),
            created_at = COALESCE(created_at, datetime('now')),
-           updated_at = COALESCE(updated_at, created_at, datetime('now'))
+           updated_at = COALESCE(updated_at, created_at, datetime('now')),
+           sync_status = COALESCE(sync_status, 'pending')
+         WHERE id = NEW.id;
+       END;`
+    );
+
+    await database.execAsync(`DROP TRIGGER IF EXISTS ${tableName}_sync_update_pending;`);
+    await database.execAsync(
+      `CREATE TRIGGER ${tableName}_sync_update_pending
+       AFTER UPDATE ON ${tableName}
+       FOR EACH ROW
+       WHEN NEW.sync_status = OLD.sync_status
+         AND NEW.local_id IS OLD.local_id
+         AND NEW.remote_id IS OLD.remote_id
+         AND NEW.user_id IS OLD.user_id
+         AND NEW.created_at IS OLD.created_at
+       BEGIN
+         UPDATE ${tableName}
+         SET
+           sync_status = 'pending',
+           updated_at = datetime('now')
          WHERE id = NEW.id;
        END;`
     );
@@ -104,7 +127,12 @@ async function runCloudSyncMigrations() {
     await database.execAsync(
       `CREATE INDEX IF NOT EXISTS ${tableName}_user_id_idx ON ${tableName} (user_id);`
     );
+    await database.execAsync(
+      `CREATE INDEX IF NOT EXISTS ${tableName}_sync_status_idx ON ${tableName} (sync_status);`
+    );
   }
+
+  await addColumnIfMissing("progress_photos", "remote_storage_path", "TEXT");
 }
 
 async function addColumnIfMissing(tableName: string, columnName: string, columnDefinition: string) {

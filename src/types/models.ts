@@ -13,8 +13,11 @@ export interface CloudSyncMetadata {
   localId?: string;
   remoteId?: string;
   userId?: string;
+  syncStatus?: SyncStatus;
   deletedAt?: string;
 }
+
+export type SyncStatus = "pending" | "synced" | "failed";
 
 export type ReminderPreferences = {
   workout: boolean;
@@ -151,6 +154,7 @@ export interface ProgressPhoto extends CloudSyncMetadata {
   id: string;
   date: string;
   localUri: string;
+  remoteStoragePath?: string;
   angle?: "front" | "side" | "back" | "other";
   notes?: string;
   createdAt: string;
@@ -172,6 +176,17 @@ export interface DailyNote extends CloudSyncMetadata {
   id: string;
   date: string;
   note: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MazeCoachHistory extends CloudSyncMetadata {
+  id: string;
+  source: "backend" | "backend_fallback" | "local_mock" | "local_fallback";
+  tone?: MazeCoachTone;
+  promptContext?: unknown;
+  recommendation: unknown;
+  errorMessage?: string;
   createdAt: string;
   updatedAt: string;
 }

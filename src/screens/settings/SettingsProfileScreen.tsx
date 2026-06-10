@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, StyleSheet, Switch, View } from "react-native";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useFocusEffect } from "@react-navigation/native";
@@ -13,6 +13,12 @@ import { SectionHeader } from "../../components/SectionHeader";
 import { getLocalProfileId, getUserProfile, saveUserProfile } from "../../database/profileRepository";
 import { useAuthSession } from "../../services/authSessionContext";
 import { syncLocalReminderNotifications } from "../../services/reminderService";
+import {
+  CloudSyncState,
+  getCloudSyncState,
+  markFirstBackupPrompted,
+  runCloudSync
+} from "../../services/syncService";
 import {
   getLocalReminderSettings,
   saveLocalReminderSettings,
@@ -81,14 +87,18 @@ export function SettingsProfileScreen({ navigation }: Props) {
   const [unitDraft, setUnitDraft] = useState<UnitPreference | null>(null);
   const [toneDraft, setToneDraft] = useState<MazeCoachTone | null>(null);
   const [reminderDraft, setReminderDraft] = useState<LocalReminderSettings | null>(null);
+  const [syncState, setSyncState] = useState<CloudSyncState>({ errors: [] });
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const loadSettings = useCallback(async () => {
-    const [storedProfile, storedReminders] = await Promise.all([
+    const [storedProfile, storedReminders, storedSyncState] = await Promise.all([
       getUserProfile(),
-      getLocalReminderSettings()
+      getLocalReminderSettings(),
+      getCloudSyncState()
     ]);
     setProfile(storedProfile);
     setReminders(storedReminders);
+    setSyncState(storedSyncState);
   }, []);
 
   useFocusEffect(
@@ -208,6 +218,67 @@ export function SettingsProfileScreen({ navigation }: Props) {
     ]);
   };
 
+  const handleRunSync = useCallback(
+    async (isFirstBackup = false) => {
+      if (authSession.status !== "signed_in") {
+        Alert.alert("Sign in required", "Sign in before syncing cloud data.");
+        return;
+      }
+
+      setIsSyncing(true);
+      try {
+        const result = await runCloudSync({ isFirstBackup });
+        const nextSyncState = await getCloudSyncState();
+        setSyncState(nextSyncState);
+
+        if (result.success) {
+          Alert.alert("Sync complete", "Maze Method backed up and pulled cloud data.");
+        } else {
+          Alert.alert("Sync finished with issues", `${result.errors.length} sync issues were saved in Settings.`);
+        }
+      } catch (error) {
+        Alert.alert("Sync unavailable", error instanceof Error ? error.message : "Try again when online.");
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [authSession.status]
+  );
+
+  useEffect(() => {
+    if (
+      authSession.status !== "signed_in" ||
+      syncState.firstBackupPromptedAt ||
+      syncState.firstBackupCompletedAt ||
+      isSyncing
+    ) {
+      return;
+    }
+
+    void markFirstBackupPrompted().then(async () => {
+      setSyncState(await getCloudSyncState());
+      Alert.alert(
+        "Back up local data?",
+        "Maze Method can back up existing local data to your signed-in Supabase account. Local data stays on this phone either way.",
+        [
+          { text: "Not now", style: "cancel" },
+          {
+            text: "Back up now",
+            onPress: () => {
+              void handleRunSync(true);
+            }
+          }
+        ]
+      );
+    });
+  }, [
+    authSession.status,
+    handleRunSync,
+    isSyncing,
+    syncState.firstBackupCompletedAt,
+    syncState.firstBackupPromptedAt
+  ]);
+
   return (
     <Screen>
       <View style={styles.header}>
@@ -227,6 +298,9 @@ export function SettingsProfileScreen({ navigation }: Props) {
         onSignIn={() => navigation.navigate("SignIn")}
         onSignOut={handleSignOut}
         onSignUp={() => navigation.navigate("SignUp")}
+        onSyncNow={() => void handleRunSync(false)}
+        syncState={syncState}
+        isSyncing={isSyncing}
         status={authSession.status}
       />
 
@@ -358,19 +432,26 @@ function SettingsActionCard({
 function AccountStatusCard({
   email,
   isConfigured,
+  isSyncing,
   onSignIn,
   onSignOut,
   onSignUp,
+  onSyncNow,
+  syncState,
   status
 }: {
   email?: string;
   isConfigured: boolean;
+  isSyncing: boolean;
   onSignIn: () => void;
   onSignOut: () => void;
   onSignUp: () => void;
+  onSyncNow: () => void;
+  syncState: CloudSyncState;
   status: string;
 }) {
   const isSignedIn = status === "signed_in";
+  const syncErrors = syncState.errors.slice(0, 3);
 
   return (
     <Card accent={isSignedIn}>
@@ -393,12 +474,32 @@ function AccountStatusCard({
       </View>
       <View style={styles.cloudStatusRow}>
         <AppText style={styles.cloudStatusText} variant="caption">
-          Cloud sync status: placeholder
+          {syncState.lastSyncedAt
+            ? `Last synced ${formatSyncDate(syncState.lastSyncedAt)}`
+            : "Cloud sync status: not synced yet"}
         </AppText>
       </View>
+      {syncErrors.length > 0 ? (
+        <View style={styles.syncErrorBox}>
+          <AppText variant="caption">Sync issues</AppText>
+          {syncErrors.map((error, index) => (
+            <AppText key={`${error.table}-${error.localId ?? index}`} muted variant="caption">
+              {error.table}: {error.message}
+            </AppText>
+          ))}
+        </View>
+      ) : null}
       <View style={styles.accountActions}>
         {isSignedIn ? (
-          <PrimaryButton icon="log-out-outline" label="Sign out" onPress={onSignOut} variant="ghost" />
+          <>
+            <PrimaryButton
+              disabled={isSyncing}
+              icon="cloud-upload-outline"
+              label={isSyncing ? "Syncing" : "Sync Now"}
+              onPress={onSyncNow}
+            />
+            <PrimaryButton icon="log-out-outline" label="Sign out" onPress={onSignOut} variant="ghost" />
+          </>
         ) : (
           <>
             <PrimaryButton
@@ -843,6 +944,15 @@ function formatReminderSummary(settings: LocalReminderSettings | null) {
   return `${enabledCount} reminders on - workouts, meals, and weekly photos.`;
 }
 
+function formatSyncDate(value: string) {
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 function formatDays(days: number[]) {
   if (days.length === 7) {
     return "Every day";
@@ -946,6 +1056,15 @@ const styles = StyleSheet.create({
   },
   stack: {
     gap: theme.spacing.md
+  },
+  syncErrorBox: {
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
+    borderColor: theme.colors.danger,
+    borderRadius: theme.radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: theme.spacing.xxs,
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.md
   },
   titleRow: {
     alignItems: "center",

@@ -36,7 +36,7 @@ export function HomeScreen({ navigation }: Props) {
     useCallback(() => {
       let isActive = true;
 
-      void Promise.all([getUserProfile(), getMazeCoachRecommendation()]).then(([storedProfile, nextRecommendation]) => {
+      void Promise.all([getUserProfile(), getMazeCoachRecommendation({ saveToHistory: false })]).then(([storedProfile, nextRecommendation]) => {
         if (isActive) {
           setProfile(storedProfile);
           setRecommendation(nextRecommendation);

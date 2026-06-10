@@ -13,6 +13,8 @@ Every user-owned table should include:
 - `updated_at timestamptz not null default now()`
 - `deleted_at timestamptz`
 
+Local SQLite also tracks `sync_status` (`pending`, `synced`, `failed`) for offline-first sync state. The remote database does not need that column unless you want server-side sync diagnostics.
+
 Recommended indexes:
 
 ```sql
@@ -139,6 +141,51 @@ create table public.workout_logs (
 );
 ```
 
+### routine_exercises
+
+Used by the local routine builder so saved routines can keep their exercise order and set/rep prescriptions.
+
+```sql
+create table public.routine_exercises (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  local_id text not null,
+  routine_local_id text not null,
+  exercise_local_id text not null,
+  exercise_name text not null,
+  muscle_group text not null,
+  equipment text,
+  order_index integer not null,
+  sets integer not null,
+  reps text not null,
+  weight numeric,
+  rest_seconds integer,
+  notes text,
+  is_personal_record boolean not null default false,
+  is_completed boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+```
+
+### exercise_resource_links
+
+```sql
+create table public.exercise_resource_links (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  local_id text not null,
+  exercise_local_id text not null,
+  url text not null,
+  label text not null,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+```
+
 ### workout_log_exercises
 
 ```sql
@@ -185,6 +232,25 @@ create table public.meal_logs (
   barcode text,
   serving_size text,
   notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+```
+
+### daily_macro_logs
+
+```sql
+create table public.daily_macro_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  local_id text not null,
+  date date not null,
+  calories integer,
+  protein_grams numeric,
+  carb_grams numeric,
+  fat_grams numeric,
+  water_ounces numeric,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
@@ -286,6 +352,21 @@ create table public.calendar_entries (
 );
 ```
 
+### daily_notes
+
+```sql
+create table public.daily_notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  local_id text not null,
+  date date not null,
+  note text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+```
+
 ### personal_records
 
 ```sql
@@ -320,6 +401,7 @@ create table public.maze_coach_history (
   recommendation jsonb not null,
   tone text not null,
   source text not null default 'local_mock',
+  error_message text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz
@@ -331,6 +413,10 @@ create table public.maze_coach_history (
 - Local SQLite remains the source of truth until sync is implemented.
 - `local_id` lets the app map existing phone records to future Supabase rows.
 - `deleted_at` supports soft deletes so sync can propagate deletions later.
-- Do not sync progress photo bytes until Supabase Storage bucket policies are designed.
+- Sync progress photo bytes only through Supabase Storage policies that restrict each user to their own folder.
 - Do not put service role keys, database URLs, or OpenAI keys in the mobile app.
+- Maze Coach history can store local mock, local fallback, backend fallback, and backend-generated recommendations. OpenAI calls should happen only in backend code.
 
+## Storage Notes
+
+Create a Supabase Storage bucket named `progress-photos`. Version 2B uploads files under `{user_id}/{local_id}.jpg` and stores that path in `progress_photos.storage_path`. Keep local URIs in SQLite when available so offline viewing remains possible.

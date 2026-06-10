@@ -1,7 +1,14 @@
 import { getUserProfile } from "../database/profileRepository";
 import { getDatabase } from "../database/client";
+import { saveMazeCoachHistory } from "../database/mazeCoachRepository";
 import { getMazeCoachTone } from "../storage/settingsStorage";
 import { calculateNutritionTargets } from "./nutrition/nutritionTargets";
+import {
+  isMazeCoachBackendConfigured,
+  MazeCoachApiRecommendation,
+  MazeCoachApiRequest,
+  requestBackendMazeCoachRecommendation
+} from "./mazeCoachApi";
 import { DailyMacroLog, FitnessGoal, MazeCoachTone, UserProfile } from "../types/models";
 import { MacroTotals, NutritionTargets } from "../types/nutrition";
 import {
@@ -10,6 +17,12 @@ import {
   formatMazeCoachTone,
   formatTrainingLocation
 } from "../utils/labels";
+
+export type MazeCoachRecommendationSource =
+  | "backend"
+  | "backend_fallback"
+  | "local_mock"
+  | "local_fallback";
 
 export type MazeCoachRecommendation = {
   headline: string;
@@ -24,6 +37,13 @@ export type MazeCoachRecommendation = {
   insights: string[];
   toneLabel: string;
   generatedAt: string;
+  source: MazeCoachRecommendationSource;
+  safetyNote?: string;
+  errorMessage?: string;
+};
+
+type MazeCoachRecommendationOptions = {
+  saveToHistory?: boolean;
 };
 
 type RecentWorkoutSummary = {
@@ -38,6 +58,33 @@ type RecentNutritionSummary = {
   averageCalories: number;
   averageProtein: number;
   lastLoggedDate?: string;
+};
+
+type RecentWeightTrendSummary = {
+  entryCount: number;
+  firstWeight?: number;
+  latestWeight?: number;
+  change?: number;
+  units?: string;
+  direction: "up" | "down" | "stable" | "unknown";
+};
+
+type CardioHistorySummary = {
+  sessionCount: number;
+  totalMinutes: number;
+  totalDistance: number;
+  lastCardioDate?: string;
+  topCardioType?: string;
+};
+
+type MazeCoachContext = {
+  profile: UserProfile | null;
+  tone: MazeCoachTone;
+  targets: NutritionTargets;
+  recentWorkouts: RecentWorkoutSummary;
+  recentNutrition: RecentNutritionSummary;
+  recentWeightTrend: RecentWeightTrendSummary;
+  cardioHistorySummary: CardioHistorySummary;
 };
 
 type WorkoutSummaryRow = {
@@ -72,27 +119,91 @@ type MacroLogRow = {
   water_ounces: number | null;
 };
 
-export async function getMazeCoachRecommendation(): Promise<MazeCoachRecommendation> {
-  // The local coach reads the same profile and logs that power the app, keeping version 1 private/offline.
-  const [profile, storedTone, recentWorkouts, recentNutrition] = await Promise.all([
+type WeightTrendRow = {
+  date: string;
+  weight: number;
+  units: string;
+};
+
+type CardioSummaryRow = {
+  session_count: number | null;
+  total_minutes: number | null;
+  total_distance: number | null;
+  last_cardio_date: string | null;
+};
+
+type CardioTypeRow = {
+  activity_type: string | null;
+  count: number;
+};
+
+export async function getMazeCoachRecommendation(
+  options: MazeCoachRecommendationOptions = {}
+): Promise<MazeCoachRecommendation> {
+  const context = await getMazeCoachContext();
+  const backendRequest = buildBackendRequest(context);
+
+  if (isMazeCoachBackendConfigured) {
+    try {
+      const backendResult = await requestBackendMazeCoachRecommendation(backendRequest);
+      const recommendation = mapBackendRecommendation(
+        backendResult.recommendation,
+        context,
+        backendResult.source,
+        backendResult.error
+      );
+      await saveRecommendationIfNeeded(options, context, backendRequest, recommendation);
+      return recommendation;
+    } catch (error) {
+      // Backend failures should never block local logging or Maze Coach usage.
+      const recommendation = {
+        ...buildLocalRecommendation(context),
+        source: "local_fallback" as const,
+        errorMessage: getErrorMessage(error)
+      };
+      await saveRecommendationIfNeeded(options, context, backendRequest, recommendation);
+      return recommendation;
+    }
+  }
+
+  const recommendation = {
+    ...buildLocalRecommendation(context),
+    source: "local_mock" as const
+  };
+  await saveRecommendationIfNeeded(options, context, backendRequest, recommendation);
+  return recommendation;
+}
+
+async function getMazeCoachContext(): Promise<MazeCoachContext> {
+  // The coach reads the same local profile and logs that power the app, keeping
+  // Maze Method usable offline even when the backend is not configured.
+  const [
+    profile,
+    storedTone,
+    recentWorkouts,
+    recentNutrition,
+    recentWeightTrend,
+    cardioHistorySummary
+  ] = await Promise.all([
     getUserProfile(),
     getMazeCoachTone(),
     getRecentWorkoutSummary(),
-    getRecentNutritionSummary()
+    getRecentNutritionSummary(),
+    getRecentWeightTrendSummary(),
+    getCardioHistorySummary()
   ]);
   const tone = profile?.mazeCoachTone ?? storedTone;
   const targets = calculateNutritionTargets(profile);
 
-  // Future backend/OpenAI integration point:
-  // Replace this local decision tree with a request to a trusted backend or Supabase Edge Function.
-  // That backend can safely call OpenAI with server-side secrets. Never ship an OpenAI API key in this app.
-  return buildLocalRecommendation({
+  return {
     profile,
     tone,
     targets,
     recentWorkouts,
-    recentNutrition
-  });
+    recentNutrition,
+    recentWeightTrend,
+    cardioHistorySummary
+  };
 }
 
 function buildLocalRecommendation({
@@ -101,13 +212,7 @@ function buildLocalRecommendation({
   targets,
   recentWorkouts,
   recentNutrition
-}: {
-  profile: UserProfile | null;
-  tone: MazeCoachTone;
-  targets: NutritionTargets;
-  recentWorkouts: RecentWorkoutSummary;
-  recentNutrition: RecentNutritionSummary;
-}): MazeCoachRecommendation {
+}: MazeCoachContext): Omit<MazeCoachRecommendation, "source"> {
   const goal = profile?.fitnessGoal ?? "build_muscle";
   const trainingDays = profile?.daysPerWeek ?? 3;
   const toneLabel = formatMazeCoachTone(tone);
@@ -128,8 +233,136 @@ function buildLocalRecommendation({
     explanation: getExplanation(profile, targets, recentWorkouts, recentNutrition, adherenceGap),
     insights: getInsights(profile, recentWorkouts, recentNutrition, adherenceGap),
     toneLabel,
-    generatedAt: new Date().toISOString()
+    generatedAt: new Date().toISOString(),
+    safetyNote: "Maze Coach provides general fitness and nutrition suggestions only and is not medical advice."
   };
+}
+
+function buildBackendRequest(context: MazeCoachContext): MazeCoachApiRequest {
+  const { profile } = context;
+
+  return {
+    profile: profile
+      ? {
+          name: profile.name,
+          age: profile.age,
+          gender: profile.gender,
+          height: profile.height,
+          weight: profile.weight,
+          goalWeight: profile.goalWeight,
+          units: profile.units,
+          fitnessGoal: profile.fitnessGoal,
+          activityLevel: profile.activityLevel,
+          daysPerWeek: profile.daysPerWeek,
+          dietaryPreference: profile.dietaryPreference,
+          experienceLevel: profile.experienceLevel,
+          trainingLocation: profile.trainingLocation,
+          mazeCoachTone: profile.mazeCoachTone
+        }
+      : null,
+    fitnessGoal: profile?.fitnessGoal ?? "build_muscle",
+    recentWorkoutLogs: [context.recentWorkouts],
+    recentNutritionLogs: [context.recentNutrition],
+    recentWeightTrend: context.recentWeightTrend,
+    cardioHistorySummary: context.cardioHistorySummary,
+    preferredMazeCoachTone: context.tone
+  };
+}
+
+function mapBackendRecommendation(
+  recommendation: MazeCoachApiRecommendation,
+  context: MazeCoachContext,
+  source: "backend" | "backend_fallback",
+  backendError?: string
+): MazeCoachRecommendation {
+  const localFallback = buildLocalRecommendation(context);
+
+  return {
+    headline: getBackendHeadline(context.tone, context.profile?.fitnessGoal ?? "build_muscle", source),
+    dailyCalories: normalizeNumber(recommendation.caloriesTarget, context.targets.calories),
+    dailyProtein: normalizeNumber(recommendation.proteinTarget, context.targets.proteinGrams),
+    carbsTarget: normalizeNumber(recommendation.carbsTarget, context.targets.carbGrams),
+    fatTarget: normalizeNumber(recommendation.fatsTarget, context.targets.fatGrams),
+    suggestedWorkout: normalizeString(recommendation.suggestedWorkout, localFallback.suggestedWorkout),
+    suggestedMeals: normalizeStringArray(recommendation.suggestedMeals, localFallback.suggestedMeals),
+    recoveryAdvice: normalizeString(recommendation.recoveryAdvice, localFallback.recoveryAdvice),
+    explanation: normalizeString(recommendation.explanation, localFallback.explanation),
+    insights: [
+      source === "backend"
+        ? "Generated through the secure Maze Method backend."
+        : "Backend fallback used because the AI service was unavailable.",
+      `${context.recentWorkouts.workoutCount} workouts logged in the last 14 days.`,
+      `${context.recentNutrition.loggedDayCount} nutrition days logged in the last 7 days.`,
+      normalizeString(recommendation.safetyNote, localFallback.safetyNote ?? "")
+    ].filter(isString),
+    toneLabel: formatMazeCoachTone(context.tone),
+    generatedAt: new Date().toISOString(),
+    source,
+    safetyNote: normalizeString(recommendation.safetyNote, localFallback.safetyNote ?? ""),
+    errorMessage: backendError
+  };
+}
+
+async function saveRecommendationIfNeeded(
+  options: MazeCoachRecommendationOptions,
+  context: MazeCoachContext,
+  promptContext: MazeCoachApiRequest,
+  recommendation: MazeCoachRecommendation
+) {
+  if (options.saveToHistory === false) {
+    return;
+  }
+
+  try {
+    await saveMazeCoachHistory({
+      source: recommendation.source,
+      tone: context.tone,
+      promptContext,
+      recommendation,
+      errorMessage: recommendation.errorMessage
+    });
+  } catch {
+    // Recommendation history should not prevent the user from seeing Maze Coach output.
+  }
+}
+
+function getBackendHeadline(
+  tone: MazeCoachTone,
+  goal: FitnessGoal,
+  source: "backend" | "backend_fallback"
+) {
+  if (source === "backend_fallback") {
+    return "Maze Coach kept your plan available with a safe fallback.";
+  }
+
+  const goalLabel = formatFitnessGoal(goal).toLowerCase();
+
+  if (tone === "serious_gym") {
+    return `Secure backend plan ready: execute the ${goalLabel} path.`;
+  }
+
+  if (tone === "professional_trainer") {
+    return `Maze Coach analyzed your ${goalLabel} context and recent logs.`;
+  }
+
+  return `Today's path is built around your ${goalLabel} goal.`;
+}
+
+function normalizeNumber(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : fallback;
+}
+
+function normalizeString(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function normalizeStringArray(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+
+  const strings = value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return strings.length > 0 ? strings : fallback;
 }
 
 async function getRecentWorkoutSummary(): Promise<RecentWorkoutSummary> {
@@ -238,6 +471,60 @@ async function getRecentNutritionSummary(): Promise<RecentNutritionSummary> {
     averageCalories: loggedDayCount > 0 ? Math.round(sum.calories / loggedDayCount) : 0,
     averageProtein: loggedDayCount > 0 ? Math.round(sum.proteinGrams / loggedDayCount) : 0,
     lastLoggedDate: totals.at(-1)?.[0]
+  };
+}
+
+async function getRecentWeightTrendSummary(): Promise<RecentWeightTrendSummary> {
+  const database = await getDatabase();
+  const rows = await database.getAllAsync<WeightTrendRow>(
+    "SELECT date, weight, units FROM body_weight_entries ORDER BY date DESC LIMIT 8"
+  );
+  const sortedRows = rows.slice().reverse();
+  const first = sortedRows[0];
+  const latest = sortedRows.at(-1);
+  const change = first && latest ? latest.weight - first.weight : undefined;
+
+  return {
+    entryCount: sortedRows.length,
+    firstWeight: first?.weight,
+    latestWeight: latest?.weight,
+    change,
+    units: latest?.units,
+    direction: getWeightDirection(change)
+  };
+}
+
+async function getCardioHistorySummary(): Promise<CardioHistorySummary> {
+  const database = await getDatabase();
+  const startDate = getDaysAgoDateKey(14);
+  const [summaryRow, typeRows] = await Promise.all([
+    database.getFirstAsync<CardioSummaryRow>(
+      `SELECT COUNT(*) AS session_count,
+              SUM(duration_minutes) AS total_minutes,
+              SUM(distance) AS total_distance,
+              MAX(date) AS last_cardio_date
+       FROM cardio_sessions
+       WHERE date >= ?`,
+      [startDate]
+    ),
+    database.getAllAsync<CardioTypeRow>(
+      `SELECT activity_type,
+              COUNT(*) AS count
+       FROM cardio_sessions
+       WHERE date >= ?
+       GROUP BY activity_type
+       ORDER BY count DESC
+       LIMIT 1`,
+      [startDate]
+    )
+  ]);
+
+  return {
+    sessionCount: summaryRow?.session_count ?? 0,
+    totalMinutes: summaryRow?.total_minutes ?? 0,
+    totalDistance: summaryRow?.total_distance ?? 0,
+    lastCardioDate: summaryRow?.last_cardio_date ?? undefined,
+    topCardioType: typeRows[0]?.activity_type ?? undefined
   };
 }
 
@@ -405,6 +692,22 @@ function getDaysAgoDateKey(daysAgo: number) {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const day = `${date.getDate()}`.padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getWeightDirection(change?: number) {
+  if (typeof change !== "number" || !Number.isFinite(change)) {
+    return "unknown";
+  }
+
+  if (Math.abs(change) < 0.25) {
+    return "stable";
+  }
+
+  return change > 0 ? "up" : "down";
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Maze Coach backend request failed.";
 }
 
 function isString(value: string | null): value is string {

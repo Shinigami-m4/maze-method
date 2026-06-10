@@ -38,6 +38,7 @@ type ProgressPhotoRow = {
   id: string;
   date: string;
   local_uri: string;
+  remote_storage_path: string | null;
   angle: ProgressPhotoAngle | string | null;
   notes: string | null;
   created_at: string;
@@ -581,6 +582,7 @@ function mapProgressPhotoRow(row: ProgressPhotoRow): ProgressPhoto {
     id: row.id,
     date: row.date,
     localUri: row.local_uri,
+    remoteStoragePath: row.remote_storage_path ?? undefined,
     angle: normalizePhotoAngle(row.angle),
     notes: row.notes ?? undefined,
     createdAt: row.created_at
