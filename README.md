@@ -242,6 +242,16 @@ Export an iOS bundle sanity check:
 npx expo export --platform ios --output-dir .expo-export-check
 ```
 
+## TestFlight Readiness
+
+Version 2D adds release-readiness documentation and an in-app Support screen placeholder. Start with:
+
+- `docs/testflight-checklist.md`
+- `docs/privacy-policy-draft.md`
+- `docs/tester-feedback-form.md`
+
+Before running EAS Build, replace the placeholder iOS bundle identifier in `app.json`, confirm the support email, and add a final app icon.
+
 ## Screenshots
 
 Add screenshots here when the app is captured from Expo Go or an iOS simulator.

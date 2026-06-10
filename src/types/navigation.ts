@@ -12,6 +12,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   MainTabs: undefined;
   SettingsProfile: undefined;
+  Support: undefined;
   MazeCoach: undefined;
   BarcodeScanner: undefined;
   FoodConfirmation: {

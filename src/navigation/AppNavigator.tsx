@@ -16,6 +16,7 @@ import { ProgressScreen } from "../screens/progress/ProgressScreen";
 import { SettingsProfileScreen } from "../screens/settings/SettingsProfileScreen";
 import { SignInScreen } from "../screens/auth/SignInScreen";
 import { SignUpScreen } from "../screens/auth/SignUpScreen";
+import { SupportScreen } from "../screens/settings/SupportScreen";
 import { WorkoutsScreen } from "../screens/workouts/WorkoutsScreen";
 import {
   BottomTabParamList,
@@ -73,6 +74,7 @@ export function AppNavigator({
           <>
             <RootStack.Screen component={BottomTabs} name="MainTabs" />
             <RootStack.Screen component={SettingsProfileScreen} name="SettingsProfile" />
+            <RootStack.Screen component={SupportScreen} name="Support" />
             <RootStack.Screen component={MazeCoachScreen} name="MazeCoach" />
             <RootStack.Screen component={BarcodeScannerScreen} name="BarcodeScanner" />
             <RootStack.Screen component={FoodConfirmationScreen} name="FoodConfirmation" />

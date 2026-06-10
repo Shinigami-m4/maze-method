@@ -363,6 +363,15 @@ export function SettingsProfileScreen({ navigation }: Props) {
         value="Data is local-first in SQLite and AsyncStorage. Export, reset, and cloud sync can be added later."
       />
 
+      <SectionHeader title="Support" />
+      <SettingsActionCard
+        icon="help-circle-outline"
+        title="Support"
+        value="Email support@mazemethod.app for TestFlight issues. Placeholder address for release setup."
+        actionLabel="Open support"
+        onPress={() => navigation.navigate("Support")}
+      />
+
       <ProfileModal
         draft={profileDraft}
         onChangeDraft={setProfileDraft}

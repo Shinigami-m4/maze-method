@@ -2,13 +2,14 @@
   "expo": {
     "name": "Maze Method",
     "slug": "maze-method",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "scheme": "maze-method",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.mazemethod.app"
+      "bundleIdentifier": "com.yourname.mazemethod",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,6 +28,12 @@
         }
       ]
     ],
+    "extra": {
+      "release": {
+        "bundleIdentifierNote": "Replace com.yourname.mazemethod with your final Apple Developer bundle identifier before running EAS Build.",
+        "iconStatus": "Final app icon is not configured yet. Add a production icon asset before App Store review."
+      }
+    },
     "experiments": {
       "typedRoutes": false
     }
